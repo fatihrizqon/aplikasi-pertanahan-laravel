@@ -1,0 +1,104 @@
+#peta-sidebar [role="tab"].active {
+    color: #dc2626;
+    border-color: #dc2626;
+}
+
+.dark #peta-sidebar [role="tab"].active {
+    color: #f87171;
+    border-color: #f87171;
+}
+
+.leaflet-control-zoom {
+    display: none !important;
+}
+
+.leaflet-control-attribution {
+    font-size: 9px !important;
+}
+
+html,
+body {
+    overflow: hidden !important;
+    height: 100% !important;
+}
+
+#map {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#peta-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+#peta-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+
+#peta-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#peta-sidebar::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 2px;
+}
+
+input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: #e5e7eb;
+    outline: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #dc2626;
+    cursor: pointer;
+}
+
+input[type=range]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #dc2626;
+    cursor: pointer;
+    border: none;
+}
+
+#peta-wrapper {
+    display: flex !important;
+}
+
+#peta-wrapper #peta-sidebar {
+    transform: none !important;
+    transition: none !important;
+    position: relative !important;
+    width: 260px !important;
+    flex-shrink: 0 !important;
+}
+
+#map {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: #1a1a2e;
+}
+
+.basemap-btn {
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.basemap-btn.active {
+    background: #dc2626 !important;
+    color: #fff !important;
+    border-color: #dc2626 !important;
+}
