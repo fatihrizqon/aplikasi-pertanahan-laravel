@@ -43,17 +43,17 @@ class PenggunaanRDTR extends Model
         ];
     }
 
-    public function bidangs(): HasMany
+    public function bidang(): HasMany
     {
         return $this->hasMany(Bidang::class, 'id_penggunaan');
     }
 
-    public function subPersils(): HasMany
+    public function sub_persil(): HasMany
     {
         return $this->hasMany(SubPersil::class, 'id_penggunaan');
     }
 
-    public function penggunaanSgs(): HasMany
+    public function penggunaan_sg(): HasMany
     {
         return $this->hasMany(PenggunaanSg::class, 'id_penggunaan');
     }

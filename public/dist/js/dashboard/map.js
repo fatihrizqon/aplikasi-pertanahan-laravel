@@ -61,9 +61,9 @@ function initMap() {
         window.provinsiLayer = L.geoJSON(geomJson, {
             style: {
                 color: '#dc2626',
-                weight: 2,
+                weight: 1,
                 fillColor: '#dc2626',
-                fillOpacity: 0.08,
+                fillOpacity: 0.05,
             },
             onEachFeature: function (feature, layer) {
                 layer.bindPopup(`<strong>${provinsiData.nama}</strong><br>Kode: ${provinsiData.kode}`);

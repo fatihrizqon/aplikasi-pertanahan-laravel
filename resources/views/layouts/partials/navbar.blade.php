@@ -116,7 +116,7 @@ $unreadNotifs = auth()->user()->unreadNotifications()->latest()->get();
                 </div>
             </div>
 
-            <a href="#!" class="flex items-center gap-x-2 px-3 py-2 text-sm transition-colors">
+            <a href="{{ route('persil.index') }}" class="flex items-center gap-x-2 px-3 py-2 text-sm transition-colors">
                 <i data-lucide="map" class="w-4 h-4"></i>
                 Persil Tanah
             </a>

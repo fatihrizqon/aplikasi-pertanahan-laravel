@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard\Referensi;
+namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Pengelola;
+use App\Models\Persil;
 use App\Traits\AuthorizationTrait;
 use App\Traits\ControllerTrait;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class PengelolaController extends Controller
+class PersilController extends Controller
 {
 
     use ControllerTrait;
@@ -17,7 +17,7 @@ class PengelolaController extends Controller
 
     public function __construct()
     {
-        // $this->authorizeResource(Pengelola::class, 'user');
+        // $this->authorizeResource(Persil::class, 'user');
     }
 
     /**
@@ -25,14 +25,14 @@ class PengelolaController extends Controller
      */
     public function index(Request $request) : View
     {
-        $models = Pengelola::filter($request->get('filters'))
+        $models = Persil::filter($request->get('filters'))
                           ->search($request->get('search'))
                           ->orderBy('id')
                           ->paginate($request->get('per-page', 10))
                           ->appends('query', null)
                           ->withQueryString();
 
-        return view('dashboard.referensi.pengelola.index', compact('models'));
+        return view('dashboard.persil.index', compact('models'));
     }
 
     /**
@@ -49,9 +49,9 @@ class PengelolaController extends Controller
      */
     public function form(string $id = null)
     {
-        $model = empty($id) ? new Pengelola : $this->findModel(['id' => $id]);
+        $model = empty($id) ? new Persil : $this->findModel(['id' => $id]);
 
-        return view('dashboard.referensi.pengelola.form', compact('model'));
+        return view('dashboard.persil.form', compact('model'));
     }
 
     /**
@@ -59,7 +59,7 @@ class PengelolaController extends Controller
      */
     public function save(Request $request, string $id = null)
     {
-        $model = empty($id) ? new Pengelola : $this->findModel(['id' => $id]);
+        $model = empty($id) ? new Persil : $this->findModel(['id' => $id]);
 
         $params = $request->all();
 
@@ -83,7 +83,7 @@ class PengelolaController extends Controller
      */
     public function findModel(array $params)
     {
-        $model = Pengelola::where($params)->firstOrFail();
+        $model = Persil::where($params)->firstOrFail();
         return $model;
     }
 }

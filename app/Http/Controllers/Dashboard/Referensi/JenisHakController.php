@@ -75,7 +75,7 @@ class JenisHakController extends Controller
 
         $model->saveOrFail();
 
-        return back()->with('success', 'New record has been stored.');
+        return back()->with(empty($id) ? 'success' : 'info', empty($id) ? 'Berhasil menambahkan data baru.' : 'Berhasil mengubah data terpilih.');
     }
 
     /**

@@ -9,7 +9,7 @@
     @push('scripts')
     <script>
         const provinsiData = @json($provinsi);
-        const kabupatenData = @json($data['kabupaten']);
+        const kabupatenData = @json($data['wilayah']['kabupaten']);
 
         const kategoriData = @json($data['filters']['kategori']);
         const jenisHakData = @json($data['filters']['jenis_hak']);

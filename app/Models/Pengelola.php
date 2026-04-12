@@ -62,12 +62,12 @@ class Pengelola extends Model
         ];
     }
 
-    public function bidangs(): HasMany
+    public function bidang(): HasMany
     {
         return $this->hasMany(Bidang::class, 'id_pengelola');
     }
 
-    public function subPersils(): HasMany
+    public function sub_persil(): HasMany
     {
         return $this->hasMany(SubPersil::class, 'id_pengelola');
     }

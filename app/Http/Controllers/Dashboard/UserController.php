@@ -93,7 +93,7 @@ class UserController extends Controller
             action: empty($id) ? 'created' : 'updated',
         );
 
-        return back()->with('success', 'New record has been stored.');
+        return back()->with(empty($id) ? 'success' : 'info', empty($id) ? 'Berhasil menambahkan data baru.' : 'Berhasil mengubah data terpilih.');
     }
 
     /**

@@ -60,7 +60,7 @@ class JenisHak extends Model
         ];
     }
 
-    public function bidangs(): HasMany
+    public function bidang(): HasMany
     {
         return $this->hasMany(Bidang::class, 'id_jenis_hak');
     }

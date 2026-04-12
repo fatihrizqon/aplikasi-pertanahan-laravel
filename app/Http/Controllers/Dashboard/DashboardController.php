@@ -16,7 +16,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request): View
     {
-        $provinsi = Provinsi::orderBy('nama')->first();
+        $provinsi = Provinsi::where('kode', 34)->first();
         $kabupaten = Kabupaten::where('id_provinsi', $provinsi->id)
                             ->orderBy('nama')
                             ->get();
@@ -29,8 +29,10 @@ class DashboardController extends Controller
         ];
 
         $data = [
-            'provinsi'  => $provinsi,
-            'kabupaten' => $kabupaten,
+            'wilayah'  => [
+                'provinsi'  => $provinsi,
+                'kabupaten' => $kabupaten,
+            ],
             'filters'  => [
                 'kategori' => Kategori::orderBy('id')->get(),
                 'jenis_hak' => JenisHak::orderBy('id')->get(),

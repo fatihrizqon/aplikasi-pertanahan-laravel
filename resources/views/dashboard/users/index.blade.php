@@ -41,7 +41,7 @@ $page_subtitle = "Kelola data pengguna dan pengelolaan akses.";
                             @can(['create_user','export_user','import_user'])
                             <a href="{{ $createHref }}" onclick="modalFormAjax(this,event)" class="btn-sm btn-ghost focus:outline-hidden">
                                 <i data-lucide="plus" class="w-4 h-4"></i>
-                                Create
+                                Tambah
                             </a>
 
                             <div class="hs-dropdown [--strategy:absolute] [--flip:false] hs-dropdown-export-import relative inline-flex">
@@ -82,7 +82,7 @@ $page_subtitle = "Kelola data pengguna dan pengelolaan akses.";
                             <thead class="bg-gray-50 dark:bg-neutral-700">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="20">#</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Action</th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Aksi</th>
                                     <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Name</th>
                                     <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Role</th>
                                     <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Username</th>
@@ -111,7 +111,7 @@ $page_subtitle = "Kelola data pengguna dan pengelolaan akses.";
                                                 <i data-lucide="lock" class="w-4 h-4"></i>
                                             </a>
                                             @endif
-                                            <a href="{{ $deleteHref($model) }}" onclick="modalConfirm(this,event)" data-title="Delete Confirmation" data-content="Are you sure to delete this record?" data-method="DELETE" class="p-2 inline-flex items-center gap-x-2 text-xs font-normal text-gray-800 shadow-2xs focus:outline-hidden focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none focus:bg-transparent dark:text-red-500 dark:hover:text-red-400 shrink-0">
+                                            <a href="{{ $deleteHref($model) }}" onclick="modalConfirm(this,event)" data-title="Konfirmasi" data-content="Apakah anda yakin menghapus data tersebut?" data-method="DELETE" class="p-2 inline-flex items-center gap-x-2 text-xs font-normal text-gray-800 shadow-2xs focus:outline-hidden focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none focus:bg-transparent dark:text-red-500 dark:hover:text-red-400 shrink-0">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                                             </a>
                                             @endif

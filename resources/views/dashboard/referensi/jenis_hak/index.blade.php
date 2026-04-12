@@ -30,13 +30,16 @@ $page_subtitle = "Kelola data jenis hak adat.";
 
                     <!-- Table Actions -->
                     <div class="grid sm:flex items-center gap-2">
-                        <div class="ms-auto flex gap-2">
-                            <!-- Filter -->
-                            <button type="button" class="btn-sm btn-ghost focus:outline-hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="hs-filter-modal" data-hs-overlay="#hs-filter-modal">
-                                <i data-lucide="filter" class="w-4 h-4"></i>
-                                Filter
-                            </button>
+                        <div class="flex gap-2">
+                            @can(['create_user','export_user','import_user'])
+                            <a href="{{ $createHref }}" onclick="modalFormAjax(this,event)" class="btn-sm btn-ghost focus:outline-hidden">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                Tambah
+                            </a>
+                            @endcan
+                        </div>
 
+                        <div class="ms-auto flex gap-2">
                             <!-- Search -->
                             <x-search-input :route="$indexHref" />
                         </div>
@@ -48,12 +51,13 @@ $page_subtitle = "Kelola data jenis hak adat.";
                             <thead class="bg-gray-50 dark:bg-neutral-700">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="20">#</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Action</th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Aksi</th>
                                     <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Kode</th>
                                     <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Nama</th>
-                                    <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Keterangan</th>
+                                    <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Jumlah Bidang</th>
                                     <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Warna</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">On Top</th>
+                                    <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Keterangan</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 dark:divide-neutral-700">
@@ -70,7 +74,7 @@ $page_subtitle = "Kelola data jenis hak adat.";
                                                 <i data-lucide="settings-2" class="w-4 h-4"></i>
                                             </a>
 
-                                            <a href="{{ $deleteHref($model) }}" onclick="modalConfirm(this,event)" data-title="Delete Confirmation" data-content="Are you sure to delete this record?" data-method="DELETE" class="p-2 inline-flex items-center gap-x-2 text-xs font-normal text-gray-800 shadow-2xs focus:outline-hidden focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none focus:bg-transparent dark:text-red-500 dark:hover:text-red-400 shrink-0">
+                                            <a href="{{ $deleteHref($model) }}" onclick="modalConfirm(this,event)" data-title="Konfirmasi" data-content="Apakah anda yakin menghapus data tersebut?" data-method="DELETE" class="p-2 inline-flex items-center gap-x-2 text-xs font-normal text-gray-800 shadow-2xs focus:outline-hidden focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none focus:bg-transparent dark:text-red-500 dark:hover:text-red-400 shrink-0">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                                             </a>
                                         </div>
@@ -86,7 +90,7 @@ $page_subtitle = "Kelola data jenis hak adat.";
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap font-normal text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->keterangan ?? '-' }}
+                                        {{ $model->bidang->count() }}
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap font-normal text-sm text-gray-800 dark:text-neutral-200">
@@ -106,6 +110,10 @@ $page_subtitle = "Kelola data jenis hak adat.";
                                             No
                                         </span>
                                         @endif
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap font-normal text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->keterangan ?? '-' }}
                                     </td>
 
                                     @empty

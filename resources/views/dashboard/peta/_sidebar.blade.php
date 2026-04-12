@@ -1,48 +1,23 @@
 <div id="peta-wrapper" class="flex bg-white dark:bg-neutral-900" style="position:fixed; top:var(--navbar-height,112px); left:0; right:0; bottom:0; z-index:10; overflow:hidden;">
-
-    {{-- ── SIDEBAR ── --}}
     <div id="peta-sidebar" class="flex flex-col flex-shrink-0 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-700" style="width:260px; height:100%; overflow-y:auto; overflow-x:hidden;">
-
-        {{-- Tab Nav --}}
         <div class="flex flex-shrink-0 border-b border-gray-200 dark:border-neutral-700" style="position:sticky; top:0; z-index:10; background:inherit;">
             <nav class="flex w-full" aria-label="Tabs" role="tablist" data-hs-tabs='{"tabActiveClasses":"text-red-600 border-red-600 dark:text-red-400 dark:border-red-400"}'>
-
-                <button type="button" id="tab-layer" class="hs-tab-active:text-red-600 hs-tab-active:border-red-600
-                               dark:hs-tab-active:text-red-400 dark:hs-tab-active:border-red-400
-                               active flex-1 flex items-center justify-center gap-1.5 py-2.5
-                               text-xs font-semibold border-b-2 border-transparent
-                               text-gray-500 dark:text-neutral-400
-                               hover:text-gray-700 dark:hover:text-neutral-200 transition-all" aria-selected="true" data-hs-tab="#panel-layer" aria-controls="panel-layer" role="tab">
+                <button type="button" id="tab-layer" class="hs-tab-active:text-red-600 hs-tab-active:border-red-600 dark:hs-tab-active:text-red-400 dark:hs-tab-active:border-red-400 active flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 transition-all" aria-selected="true" data-hs-tab="#panel-layer" aria-controls="panel-layer" role="tab">
                     <i data-lucide="layers" class="w-3 h-3"></i>
                     LAYER
                 </button>
-
-                <button type="button" id="tab-radius" class="hs-tab-active:text-red-600 hs-tab-active:border-red-600
-                               dark:hs-tab-active:text-red-400 dark:hs-tab-active:border-red-400
-                               flex-1 flex items-center justify-center gap-1.5 py-2.5
-                               text-xs font-semibold border-b-2 border-transparent
-                               text-gray-500 dark:text-neutral-400
-                               hover:text-gray-700 dark:hover:text-neutral-200 transition-all" aria-selected="false" data-hs-tab="#panel-radius" aria-controls="panel-radius" role="tab">
+                <button type="button" id="tab-radius" class="hs-tab-active:text-red-600 hs-tab-active:border-red-600 dark:hs-tab-active:text-red-400 dark:hs-tab-active:border-red-400 flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 transition-all" aria-selected="false" data-hs-tab="#panel-radius" aria-controls="panel-radius" role="tab">
                     <i data-lucide="radius" class="w-3 h-3"></i>
                     RADIUS
                 </button>
-
             </nav>
         </div>
 
-        {{-- Panel: LAYER --}}
         <div id="panel-layer" role="tabpanel" aria-labelledby="tab-layer" class="flex flex-col flex-shrink-0">
-
-            {{-- Search & Filter Wilayah --}}
             <div class="flex-shrink-0 border-b border-gray-100 dark:border-neutral-800" style="position:sticky; top:40px; z-index:9; background:inherit;">
                 <div class="p-3 space-y-2">
-
-                    {{-- Cari koordinat --}}
                     <div class="relative">
-                        <input type="text" id="search-koordinat" name="search-koordinat" placeholder="Cari latitude, longitude" autocomplete="off" class="py-1.5 px-3 pr-8 block w-full border-gray-200 rounded-lg text-xs
-                                      focus:border-red-500 focus:ring-red-500
-                                      dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400
-                                      dark:placeholder-neutral-500 dark:focus:ring-neutral-600">
+                        <input type="text" id="search-koordinat" name="search-koordinat" placeholder="Cari latitude, longitude" autocomplete="off" class="py-1.5 px-3 pr-8 block w-full border-gray-200 rounded-lg text-xs focus:border-red-500 focus:ring-red-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:placeholder-neutral-500 dark:focus:ring-neutral-600">
                         <button type="button" onclick="searchKoordinat()" class="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-red-500 transition">
                             <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -51,13 +26,9 @@
                     </div>
                     <p class="text-[10px] text-gray-400 dark:text-neutral-500">Contoh: -7.805147, 110.363054</p>
 
-                    {{-- Filter Kabupaten --}}
-                    <select id="filter-kabupaten" class="py-1.5 px-2.5 block w-full border-gray-200 rounded-lg text-xs
-                                   focus:border-red-500 focus:ring-red-500
-                                   dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400
-                                   dark:focus:ring-neutral-600" onchange="onKabupatenChange(this.value)">
+                    <select id="filter-kabupaten" class="py-1.5 px-2.5 block w-full border-gray-200 rounded-lg text-xs focus:border-red-500 focus:ring-red-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:focus:ring-neutral-600" onchange="onKabupatenChange(this.value)">
                         <option value="">Semua Kabupaten/Kota</option>
-                        @foreach($data['kabupaten'] as $kab)
+                        @foreach($data['wilayah']['kabupaten'] as $kab)
                         <option value="{{ $kab->kode }}">{{ $kab->nama }}</option>
                         @endforeach
                     </select>

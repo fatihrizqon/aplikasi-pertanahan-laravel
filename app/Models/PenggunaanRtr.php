@@ -6,7 +6,7 @@ use App\Traits\ModelTrait;
 use App\Traits\ValidatableTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+// DELETE MANUALLY SOON
 class PenggunaanRtr extends Model
 {
     use ModelTrait, ValidatableTrait;

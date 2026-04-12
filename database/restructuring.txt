@@ -1,0 +1,68 @@
+persil
+-> proposed attributes:
+    - id
+    - jenis: sg;pag;tkd
+    - id_kepemilikan: kasultanan;kadipaten;
+    - no_persil convert to nomor_persil
+    - add klas column
+    - alamat
+    - no_sertifikat convert to nomor_sertifikat
+    - no_surat_ukur convert to nomor_surat_ukur
+    - add coordinates column (lat,long)
+    - add created_by column
+    - id_user_verifikasi convert to verified_by
+    - possibly drop id_kategori_tanah_desa_detail
+    - id_kelurahan split to 3 tables: kode_kelurahan;kode_kecamatan;kode_kabupaten;kode_provinsi;
+
+bidang
+-> proposed attributes:
+    - id
+    - id_persil (refers to persil.id)
+    - nomor_bidang
+    - luas
+    - geom
+    - id_jenis_hak convert to id_hak_adat (change table jenis_hak to hak_adat)
+    - nomor_kekancingan
+    - id_jenis_uupa convert to id_jenis_sertifikat (change table jenis_uupa to jenis_sertifikat:belum teridentifikasi;hak pakai;hak pengelola;hak milik;hak guna bangunan;belum bersertifikat;)
+    - no_surat_uupa convert to nomor_sertifikat
+    - id_pengelola (refers to pengelola.id)
+    - id_penggunaan (refers to penggunaan.id)
+    - tgl_mulai convert to tanggal_mulai (need to be clarified)
+    - tgl_selesai convert to tanggal_selesai (need to be clarified)
+    - id_status_kesesuaian (refers to kesesuaian Enum)
+    - no_sertifikat possibly dropped due to no_surat_uupa will convert to nomor_sertifikat (remove duplicates)
+    - id_file
+    - id_status_sertifikat (refers to status sertifikat Enum)
+    - id_kesesuaian_rdtr needs to be clarified
+    - id_peta needs to be clarified
+    - id_sg_pag_lama convert to nomor_sg_pag_lama (needs better choice)
+    - keterangan
+    - timestamp
+
+
+idmc_ possibility to be merged into single table
+
+kategori_ possibility to be merged into single table
+
+lampiran_ possibility to be merged into single table
+
+polaruang_ possibility to be merged into single table
+
+rdtr_ possibility to be merged into single table
+
+need to be checked, possibly unusued tables:
+- config
+- galeri_sub_persil
+- jenis_monitoring = convert to Enum
+- jenis_pengajuan = convert to Enum
+- jenis_permohonan = convert to Enum
+- jenis_uupa = convert to Enum
+- kondisi_lahan = convert to Enum
+- kontak
+- masa_berlaku = convert to Enum
+- peta_kecamatan
+- status_kesesuaian = convert to Enum
+- status_pengajuan = convert to Enum
+- status_sertifikat = convert to Enum
+- tanggal_notifikasi
+- tujuan_permohonan = convert to Enum

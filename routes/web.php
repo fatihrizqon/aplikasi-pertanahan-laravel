@@ -1,7 +1,7 @@
 <?php
 
-use App\Enum\RolesEnum;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\PersilController;
 use App\Http\Controllers\Dashboard\Referensi\JenisHakController;
 use App\Http\Controllers\Dashboard\Referensi\PengelolaController;
 use App\Http\Controllers\Dashboard\Referensi\PenggunaanRDTRController;
@@ -21,6 +21,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/overview', [DashboardController::class, 'overview'])->name('dashboard.overview');
         Route::get('/monitoring', [DashboardController::class, 'monitoring'])->name('dashboard.monitoring');
+
+        Route::resource('persil', PersilController::class);
 
         Route::resource('jenis_hak', JenisHakController::class);
         Route::resource('pengelola', PengelolaController::class);

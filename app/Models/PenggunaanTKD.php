@@ -43,7 +43,7 @@ class PenggunaanTKD extends Model
         ];
     }
 
-    public function pengajuanTanahDesas(): HasMany
+    public function pengajuan_tkd(): HasMany
     {
         return $this->hasMany(PengajuanTanahDesa::class, 'id_penggunaan');
     }
