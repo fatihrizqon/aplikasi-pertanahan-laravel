@@ -13,6 +13,31 @@ return new class extends Migration
             $table->string('nama', 256)->nullable();
         });
 
+        /*
+        Schema::create('persil', function (Blueprint $table) {
+            $table->increments('id');
+            $table->enum('jenis', ['sg', 'pag', 'tk'])->nullable();
+            $table->foreign('id_pemilik')->references('id')->on('pemilik');
+            $table->string('nomor_persil', 128)->nullable();
+            $table->string('klas', 128)->nullable();
+            $table->decimal('luas', 10, 2)->nullable();
+            $table->string('alamat')->nullable();
+            $table->foreign('kode_kelurahan')->references('kode')->on('kelurahan');
+            $table->foreign('kode_kecamatan')->references('kode')->on('kecamatan');
+            $table->foreign('kode_kabupaten')->references('kode')->on('kabupaten');
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->foreign('verified_by')->references('id')->on('users');
+            $table->string('batas_utara', 256)->nullable();
+            $table->string('batas_selatan', 256)->nullable();
+            $table->string('batas_timur', 256)->nullable();
+            $table->string('batas_barat', 256)->nullable();
+            $table->geometry('geom', 'multipolygon', 4326)->nullable();
+            $table->string('koordinat')->nullable();
+            $table->string('legacy_id', 64)->nullable()->unique();
+            $table->timestamps();
+        });
+        */
+
         Schema::create('persil', function (Blueprint $table) {
             $table->increments('id');
             $table->smallInteger('id_kategori')->nullable();
