@@ -1,8 +1,7 @@
 {{-- ── MAP AREA ── --}}
 <div class="relative flex-1 bg-gray-100 dark:bg-neutral-800" style="overflow:hidden; min-width:0; height:100%;">
     <div id="map" style="position:absolute; inset:0; width:100%; height:100%;"></div>
-</div>
-
+</div> <!-- /map-area -->
 </div>{{-- /peta-wrapper --}}
 
 {{-- ── Zoom Controls ── --}}

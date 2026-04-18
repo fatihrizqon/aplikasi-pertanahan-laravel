@@ -12,10 +12,12 @@ Route::prefix('api/v1')->group(function () {
         Route::get('/kecamatan',        [WilayahController::class, 'kecamatan']);
         Route::get('/kelurahan',        [WilayahController::class, 'kelurahan']);
 
+        Route::get('/provinsi/bbox',    [WilayahController::class, 'provinsiBbox']);
         Route::get('/kabupaten/bbox',   [WilayahController::class, 'kabupatenBbox']);
         Route::get('/kecamatan/bbox',   [WilayahController::class, 'kecamatanBbox']);
         Route::get('/kelurahan/bbox',   [WilayahController::class, 'kelurahanBbox']);
 
+        Route::get('/provinsi/geojson',  [WilayahController::class, 'provinsiGeojson']);
         Route::get('/kabupaten/geojson', [WilayahController::class, 'kabupatenGeojson']);
         Route::get('/kecamatan/geojson', [WilayahController::class, 'kecamatanGeojson']);
         Route::get('/kelurahan/geojson', [WilayahController::class, 'kelurahanGeojson']);

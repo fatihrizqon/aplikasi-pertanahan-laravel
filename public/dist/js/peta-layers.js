@@ -50,6 +50,9 @@ const petaLayers = {
 
     // Debounce timer untuk moveend
     _fetchTimer: null,
+
+    // Flag: sedang proses ganti filter wilayah — block moveend sementara
+    _wilayahChanging: false,
 };
 
 // ── Inisialisasi FeatureGroup dari DOM ────────────────────────────────────────
@@ -121,6 +124,9 @@ function initPetaLayers() {
 
     // Fetch ulang saat peta digeser/zoom — debounce 600ms
     window.petaMap.on("moveend zoomend", () => {
+        // Skip jika sedang proses ganti filter wilayah (fitBounds dari loadWilayahLayer/fitBoundsToParent)
+        if (petaLayers._wilayahChanging) return;
+
         clearTimeout(petaLayers._fetchTimer);
         petaLayers._fetchTimer = setTimeout(() => {
             const aktifKategori = getKategoriAktif();

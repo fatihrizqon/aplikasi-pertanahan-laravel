@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Bidang;
 use App\Traits\ModelTrait;
 use App\Traits\ValidatableTrait;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,6 @@ class StatusKesesuaian extends Model
     protected $fillable = [
         'nama',
         'warna',
-        'ontop',
     ];
 
     public function labels(): array
@@ -26,7 +26,6 @@ class StatusKesesuaian extends Model
         return [
             'nama'  => 'Nama',
             'warna' => 'Warna',
-            'ontop' => 'On Top',
         ];
     }
 
@@ -35,8 +34,12 @@ class StatusKesesuaian extends Model
         return [
             'nama'  => ['nullable', 'string', 'max:256'],
             'warna' => ['nullable', 'string', 'max:15'],
-            'ontop' => ['required', 'integer'],
         ];
+    }
+
+    public function bidang(): HasMany
+    {
+        return $this->hasMany(Bidang::class, 'id_penggunaan');
     }
 
     public function bidangsKesesuaian(): HasMany

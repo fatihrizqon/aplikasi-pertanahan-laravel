@@ -114,11 +114,11 @@ $page_subtitle = "Kelola data penggunaan Rencana Desain Tata Ruang (RDTR).";
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->sub_persil->count() }}
+                                        $model->sub_persil->count()
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->penggunaan_sg->count() }}
+                                        $model->penggunaan_sg->count()
                                     </td>
 
                                 </tr>

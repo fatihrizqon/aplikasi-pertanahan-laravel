@@ -13,119 +13,96 @@ class Persil extends Model
 {
     use ModelTrait, ValidatableTrait;
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $table = 'persil';
 
     protected $fillable = [
-        'id_kategori',
-        'id_kelurahan',
-        'jalan',
-        'no_persil',
-        'no_sertifikat',
+        'nomor_persil',
+        'klas',
         'luas',
+        'alamat',
+        'id_kelurahan',
+        'id_kecamatan',
+        'id_kabupaten',
         'batas_utara',
         'batas_selatan',
         'batas_timur',
         'batas_barat',
         'geom',
-        'no_surat_ukur',
-        'id_kategori_tanah_desa',
-        'last_updated',
-        'status_verifikasi',
-        'id_user_verifikasi',
-        'id_kategori_tanah_desa_detail',
+        'koordinat',
+        'legacy_id',
+        'created_by',
+        'verified_by',
     ];
 
     public function labels(): array
     {
         return [
-            'id_kategori'                   => 'Kategori',
-            'id_kelurahan'                  => 'Kelurahan',
-            'jalan'                         => 'Jalan',
-            'no_persil'                     => 'No. Persil',
-            'no_sertifikat'                 => 'No. Sertifikat',
-            'luas'                          => 'Luas (m²)',
-            'batas_utara'                   => 'Batas Utara',
-            'batas_selatan'                 => 'Batas Selatan',
-            'batas_timur'                   => 'Batas Timur',
-            'batas_barat'                   => 'Batas Barat',
-            'geom'                          => 'Geometri',
-            'no_surat_ukur'                 => 'No. Surat Ukur',
-            'id_kategori_tanah_desa'        => 'Kategori Tanah Desa',
-            'status_verifikasi'             => 'Status Verifikasi',
-            'id_user_verifikasi'            => 'Diverifikasi Oleh',
-            'id_kategori_tanah_desa_detail' => 'Detail Kategori Tanah Desa',
+            'nomor_persil'  => 'No. Persil',
+            'klas'          => 'Klas',
+            'luas'          => 'Luas (m²)',
+            'alamat'        => 'Alamat',
+            'id_kelurahan'  => 'Kelurahan',
+            'id_kecamatan'  => 'Kecamatan',
+            'id_kabupaten'  => 'Kabupaten',
+            'batas_utara'   => 'Batas Utara',
+            'batas_selatan' => 'Batas Selatan',
+            'batas_timur'   => 'Batas Timur',
+            'batas_barat'   => 'Batas Barat',
+            'geom'          => 'Geometri',
+            'koordinat'     => 'Koordinat',
+            'legacy_id'     => 'ID Lama',
         ];
     }
 
     public function rules($scenario = null): array
     {
-        $scenarios = [
-            null => [
-                'id_kategori'                   => ['nullable', 'integer', 'exists:kategori,id'],
-                'id_kelurahan'                  => ['nullable', 'integer', 'exists:kelurahan,id'],
-                'jalan'                         => ['nullable', 'string', 'max:128'],
-                'no_persil'                     => ['required', 'string', 'max:32', Rule::unique($this->getTable())->ignore($this)],
-                'no_sertifikat'                 => ['nullable', 'string', 'max:64'],
-                'luas'                          => ['nullable', 'numeric'],
-                'batas_utara'                   => ['nullable', 'string', 'max:256'],
-                'batas_selatan'                 => ['nullable', 'string', 'max:256'],
-                'batas_timur'                   => ['nullable', 'string', 'max:256'],
-                'batas_barat'                   => ['nullable', 'string', 'max:256'],
-                'geom'                          => ['nullable'],
-                'no_surat_ukur'                 => ['nullable', 'string', 'max:16'],
-                'id_kategori_tanah_desa'        => ['nullable', 'integer', 'exists:kategori_tanah_desa,id'],
-                'status_verifikasi'             => ['nullable', 'integer'],
-                'id_user_verifikasi'            => ['nullable', 'integer', 'exists:users,id'],
-                'id_kategori_tanah_desa_detail' => ['nullable', 'integer', 'exists:kategori_tanah_desa_detail,id'],
-            ],
-            'update' => [
-                'id_kategori'                   => ['nullable', 'integer', 'exists:kategori,id'],
-                'id_kelurahan'                  => ['nullable', 'integer', 'exists:kelurahan,id'],
-                'jalan'                         => ['nullable', 'string', 'max:128'],
-                'no_persil'                     => ['required', 'string', 'max:32', Rule::unique($this->getTable())->ignore($this)],
-                'no_sertifikat'                 => ['nullable', 'string', 'max:64'],
-                'luas'                          => ['nullable', 'numeric'],
-                'batas_utara'                   => ['nullable', 'string', 'max:256'],
-                'batas_selatan'                 => ['nullable', 'string', 'max:256'],
-                'batas_timur'                   => ['nullable', 'string', 'max:256'],
-                'batas_barat'                   => ['nullable', 'string', 'max:256'],
-                'geom'                          => ['nullable'],
-                'no_surat_ukur'                 => ['nullable', 'string', 'max:16'],
-                'id_kategori_tanah_desa'        => ['nullable', 'integer', 'exists:kategori_tanah_desa,id'],
-                'status_verifikasi'             => ['nullable', 'integer'],
-                'id_user_verifikasi'            => ['nullable', 'integer', 'exists:users,id'],
-                'id_kategori_tanah_desa_detail' => ['nullable', 'integer', 'exists:kategori_tanah_desa_detail,id'],
-            ],
+        $base = [
+            'nomor_persil'  => ['required', 'string', 'max:128', Rule::unique($this->getTable())->ignore($this)],
+            'klas'          => ['nullable', 'string', 'max:128'],
+            'luas'          => ['nullable', 'numeric'],
+            'alamat'        => ['nullable', 'string', 'max:255'],
+            'id_kelurahan'  => ['required', 'integer', 'exists:kelurahan,id'],
+            'id_kecamatan'  => ['required', 'integer', 'exists:kecamatan,id'],
+            'id_kabupaten'  => ['required', 'integer', 'exists:kabupaten,id'],
+            'batas_utara'   => ['nullable', 'string', 'max:256'],
+            'batas_selatan' => ['nullable', 'string', 'max:256'],
+            'batas_timur'   => ['nullable', 'string', 'max:256'],
+            'batas_barat'   => ['nullable', 'string', 'max:256'],
+            'geom'          => ['nullable'],
+            'koordinat'     => ['nullable', 'string'],
+            'legacy_id'     => ['nullable', 'string', 'max:64'],
         ];
 
-        return $scenarios[$scenario] ?? $scenarios[null];
+        return $base;
     }
 
-    public function kategori(): BelongsTo
-    {
-        return $this->belongsTo(Kategori::class, 'id_kategori');
-    }
+    // ── Relasi ────────────────────────────────────────────────────────────────
 
     public function kelurahan(): BelongsTo
     {
         return $this->belongsTo(Kelurahan::class, 'id_kelurahan');
     }
 
-    public function kategoriTanahDesa(): BelongsTo
+    public function kecamatan(): BelongsTo
     {
-        return $this->belongsTo(KategoriTanahDesa::class, 'id_kategori_tanah_desa');
+        return $this->belongsTo(Kecamatan::class, 'id_kecamatan');
     }
 
-    public function kategoriTanahDesaDetail(): BelongsTo
+    public function kabupaten(): BelongsTo
     {
-        return $this->belongsTo(KategoriTanahDesaDetail::class, 'id_kategori_tanah_desa_detail');
+        return $this->belongsTo(Kabupaten::class, 'id_kabupaten');
     }
 
-    public function userVerifikasi(): BelongsTo
+    public function createdBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'id_user_verifikasi');
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     public function bidangs(): HasMany

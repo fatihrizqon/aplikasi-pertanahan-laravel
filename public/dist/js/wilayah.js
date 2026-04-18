@@ -161,6 +161,10 @@ function syncWilayahFilter() {
     petaLayers.wilayah.kecamatan_kode = kecamatan;
     petaLayers.wilayah.kelurahan_kode = kelurahan;
 
+    // Cancel debounce moveend yang mungkin pending — hindari race condition
+    // dengan fetch yang akan kita trigger di bawah ini
+    clearTimeout(petaLayers._fetchTimer);
+
     // Trigger ulang fetch untuk semua layer yang sedang aktif
     const aktifKategori =
         typeof getKategoriAktif === "function" ? getKategoriAktif() : [];
@@ -228,14 +232,27 @@ function setupLayerChangeHandler(level) {
 
     $(selector).on("change", function () {
         const kode = $(this).val();
+
+        // Block moveend selama ganti wilayah.
+        // fitBounds() ada di dalam $.ajax success callback (async), jadi moveend
+        // bisa muncul SETELAH syncWilayahFilter selesai dan data sudah dirender —
+        // tanpa flag ini moveend akan clear + override data yang baru saja dirender.
+        if (typeof petaLayers !== "undefined") petaLayers._wilayahChanging = true;
+
         if (kode) {
             loadWilayahLayer(level, kode);
         } else {
             clearWilayahLayer(level);
             fitBoundsToParent(level);
         }
-        // Sync ke petaLayers.wilayah dan re-fetch layer aktif
+
+        // Sync filter & fetch ulang semua layer aktif
         syncWilayahFilter();
+
+        // Buka kembali moveend setelah fitBounds + animasi Leaflet selesai (~2 detik)
+        setTimeout(() => {
+            if (typeof petaLayers !== "undefined") petaLayers._wilayahChanging = false;
+        }, 2000);
     });
 }
 

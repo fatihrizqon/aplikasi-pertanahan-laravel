@@ -13,7 +13,7 @@ class Bidang extends Model
 {
     use ModelTrait, ValidatableTrait;
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $table = 'bidang';
 
@@ -22,121 +22,82 @@ class Bidang extends Model
     ];
 
     protected $fillable = [
-        'id_jenis_hak',
-        'id_jenis_uupa',
-        'no_surat_uupa',
-        'no_bidang',
-        'id_pengelola',
-        'no_kekancingan',
-        'luas',
-        'id_penggunaan',
-        'tgl_mulai',
-        'tgl_selesai',
-        'keterangan',
-        'id_status_kesesuaian',
-        'no_sertifikat',
-        'id_file',
-        'id_status_sertifikat',
-        'geom',
         'id_persil',
-        'id_kesesuaian_rdtr',
-        'id_peta',
-        'id_sg_pag_lama',
-        'last_updated',
+        'id_jenis_hak',
+        'id_jenis_hak_adat',
+        'id_kategori',
+        'id_status_kesesuaian',
+        'id_pengelola',
+        'id_penggunaan',
+        'pemilik',
+        'nomor_hak',
+        'nomor_hak_adat',
+        'nomor_bidang',
+        'luas',
+        'geom',
+        'koordinat',
+        'id_file',
+        'keterangan',
+        'created_by',
+        'verified_by',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'tgl_mulai'   => 'date',
-            'tgl_selesai' => 'date',
-        ];
-    }
 
     public function labels(): array
     {
         return [
-            'id_jenis_hak'          => 'Jenis Hak',
-            'id_jenis_uupa'         => 'Jenis UUPA',
-            'no_surat_uupa'         => 'No. Surat UUPA',
-            'no_bidang'             => 'No. Bidang',
-            'id_pengelola'          => 'Pengelola',
-            'no_kekancingan'        => 'No. Kekancingan',
-            'luas'                  => 'Luas (m²)',
-            'id_penggunaan'         => 'Penggunaan',
-            'tgl_mulai'             => 'Tanggal Mulai',
-            'tgl_selesai'           => 'Tanggal Selesai',
-            'keterangan'            => 'Keterangan',
-            'id_status_kesesuaian'  => 'Status Kesesuaian',
-            'no_sertifikat'         => 'No. Sertifikat',
-            'id_file'               => 'File Dokumen',
-            'id_status_sertifikat'  => 'Status Sertifikat',
-            'geom'                  => 'Geometri',
             'id_persil'             => 'Persil',
-            'id_kesesuaian_rdtr'    => 'Kesesuaian RDTR',
-            'id_peta'               => 'File Peta',
-            'id_sg_pag_lama'        => 'ID SG/PAG Lama',
-            'last_updated'          => 'Terakhir Diperbarui',
+            'id_jenis_hak'          => 'Jenis Hak',
+            'id_jenis_hak_adat'     => 'Jenis Hak Adat',
+            'id_kategori'           => 'Kategori',
+            'id_status_kesesuaian'  => 'Status Kesesuaian',
+            'id_pengelola'          => 'Pengelola',
+            'id_penggunaan'         => 'Penggunaan',
+            'pemilik'               => 'Pemilik',
+            'nomor_hak'             => 'Nomor Hak',
+            'nomor_hak_adat'        => 'Nomor Hak Adat',
+            'nomor_bidang'          => 'No. Bidang',
+            'luas'                  => 'Luas (m²)',
+            'geom'                  => 'Geometri',
+            'koordinat'             => 'Koordinat',
+            'id_file'               => 'File Dokumen',
+            'keterangan'            => 'Keterangan',
         ];
     }
 
     public function rules($scenario = null): array
     {
-        $scenarios = [
-            null => [
-                'id_jenis_hak'         => ['nullable', 'integer', 'exists:jenis_hak,id'],
-                'id_jenis_uupa'        => ['nullable', 'integer', 'exists:jenis_uupa,id'],
-                'no_surat_uupa'        => ['nullable', 'string', 'max:64'],
-                'no_bidang'            => ['required', 'string', 'max:64'],
-                'id_pengelola'         => ['nullable', 'integer', 'exists:pengelola,id'],
-                'no_kekancingan'       => ['nullable', 'string', 'max:64'],
-                'luas'                 => ['nullable', 'numeric'],
-                'id_penggunaan'        => ['nullable', 'integer', 'exists:penggunaan_rtr,id'],
-                'tgl_mulai'            => ['nullable', 'date'],
-                'tgl_selesai'          => ['nullable', 'date'],
-                'keterangan'           => ['nullable', 'string', 'max:512'],
-                'id_status_kesesuaian' => ['nullable', 'integer', 'exists:status_kesesuaian,id'],
-                'no_sertifikat'        => ['nullable', 'string', 'max:128'],
-                'id_file'              => ['nullable', 'integer', 'exists:file,id'],
-                'id_status_sertifikat' => ['nullable', 'integer', 'exists:status_sertifikat,id'],
-                'geom'                 => ['nullable'],
-                'id_persil'            => ['nullable', 'integer', 'exists:persil,id'],
-                'id_kesesuaian_rdtr'   => ['nullable', 'integer', 'exists:status_kesesuaian,id'],
-                'id_peta'              => ['nullable', 'integer', 'exists:file,id'],
-                'id_sg_pag_lama'       => ['nullable', 'string', 'max:256'],
-                'last_updated'         => ['nullable', 'string', 'max:500'],
-            ],
-            'update' => [
-                'id_jenis_hak'         => ['nullable', 'integer', 'exists:jenis_hak,id'],
-                'id_jenis_uupa'        => ['nullable', 'integer', 'exists:jenis_uupa,id'],
-                'no_surat_uupa'        => ['nullable', 'string', 'max:64'],
-                'no_bidang'            => ['required', 'string', 'max:64'],
-                'id_pengelola'         => ['nullable', 'integer', 'exists:pengelola,id'],
-                'no_kekancingan'       => ['nullable', 'string', 'max:64'],
-                'luas'                 => ['nullable', 'numeric'],
-                'id_penggunaan'        => ['nullable', 'integer', 'exists:penggunaan_rtr,id'],
-                'tgl_mulai'            => ['nullable', 'date'],
-                'tgl_selesai'          => ['nullable', 'date'],
-                'keterangan'           => ['nullable', 'string', 'max:512'],
-                'id_status_kesesuaian' => ['nullable', 'integer', 'exists:status_kesesuaian,id'],
-                'no_sertifikat'        => ['nullable', 'string', 'max:128'],
-                'id_file'              => ['nullable', 'integer', 'exists:file,id'],
-                'id_status_sertifikat' => ['nullable', 'integer', 'exists:status_sertifikat,id'],
-                'geom'                 => ['nullable'],
-                'id_persil'            => ['nullable', 'integer', 'exists:persil,id'],
-                'id_kesesuaian_rdtr'   => ['nullable', 'integer', 'exists:status_kesesuaian,id'],
-                'id_peta'              => ['nullable', 'integer', 'exists:file,id'],
-                'id_sg_pag_lama'       => ['nullable', 'string', 'max:256'],
-                'last_updated'         => ['nullable', 'string', 'max:500'],
-            ],
+        $base = [
+            'id_persil'             => ['nullable', 'integer', 'exists:persil,id'],
+            'id_jenis_hak'          => ['nullable', 'integer', 'exists:jenis_hak,id'],
+            'id_jenis_hak_adat'     => ['nullable', 'integer', 'exists:jenis_hak_adat,id'],
+            'id_kategori'           => ['nullable', 'integer', 'exists:kategori,id'],
+            'id_status_kesesuaian'  => ['nullable', 'integer', 'exists:status_kesesuaian,id'],
+            'id_pengelola'          => ['nullable', 'integer', 'exists:pengelola,id'],
+            'id_penggunaan'         => ['nullable', 'integer', 'exists:penggunaan,id'],
+            'pemilik'               => ['nullable', 'in:kasultanan,kadipaten'],
+            'nomor_hak'             => ['nullable', 'string', 'max:64'],
+            'nomor_hak_adat'        => ['nullable', 'string', 'max:64'],
+            'nomor_bidang'          => ['required', 'string', 'max:64'],
+            'luas'                  => ['nullable', 'numeric'],
+            'geom'                  => ['nullable'],
+            'koordinat'             => ['nullable', 'string', 'max:255'],
+            'id_file'               => ['nullable', 'integer', 'exists:files,id'],
+            'keterangan'            => ['nullable', 'string', 'max:512'],
         ];
 
-        return $scenarios[$scenario] ?? $scenarios[null];
+        return $base;
     }
+
+    // ── Relasi ────────────────────────────────────────────────────────────────
 
     public function persil(): BelongsTo
     {
         return $this->belongsTo(Persil::class, 'id_persil');
+    }
+
+    public function kategori(): BelongsTo
+    {
+        return $this->belongsTo(Kategori::class, 'id_kategori');
     }
 
     public function jenisHak(): BelongsTo
@@ -144,9 +105,9 @@ class Bidang extends Model
         return $this->belongsTo(JenisHak::class, 'id_jenis_hak');
     }
 
-    public function jenisUupa(): BelongsTo
+    public function jenisHakAdat(): BelongsTo
     {
-        return $this->belongsTo(JenisUupa::class, 'id_jenis_uupa');
+        return $this->belongsTo(JenisHakAdat::class, 'id_jenis_hak_adat');
     }
 
     public function pengelola(): BelongsTo
@@ -156,7 +117,8 @@ class Bidang extends Model
 
     public function penggunaan(): BelongsTo
     {
-        return $this->belongsTo(PenggunaanRtr::class, 'id_penggunaan');
+        // Tabel: penggunaan (dikelola oleh PenggunaanRDTR model)
+        return $this->belongsTo(PenggunaanRDTR::class, 'id_penggunaan');
     }
 
     public function statusKesesuaian(): BelongsTo
@@ -164,24 +126,19 @@ class Bidang extends Model
         return $this->belongsTo(StatusKesesuaian::class, 'id_status_kesesuaian');
     }
 
-    public function kesesuaianRdtr(): BelongsTo
-    {
-        return $this->belongsTo(StatusKesesuaian::class, 'id_kesesuaian_rdtr');
-    }
-
-    public function statusSertifikat(): BelongsTo
-    {
-        return $this->belongsTo(StatusSertifikat::class, 'id_status_sertifikat');
-    }
-
     public function file(): BelongsTo
     {
         return $this->belongsTo(File::class, 'id_file');
     }
 
-    public function peta(): BelongsTo
+    public function createdBy(): BelongsTo
     {
-        return $this->belongsTo(File::class, 'id_peta');
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     public function subPersils(): HasMany

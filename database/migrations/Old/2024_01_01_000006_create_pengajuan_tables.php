@@ -8,6 +8,20 @@ return new class extends Migration
 {
     public function up(): void
     {
+        /**
+         * Table: permohonan
+         * - id (PK)
+         * - nomor (string, not null)
+         * - tanggal_masuk (date, nullable)
+         * - nama (string, nullable)
+         * - alamat (text, nullable)
+         * - email (string, nullable)
+         * - jenis_permohonan [Pengajuan Baru (Sudah Terbit Izin), Pengajuan Baru (Belum Terbit Izin), Perpanjangan, Pengalihan (Lintiran), Pengalihan (Liyeran)
+         * - kategori [sg, pag, tk]
+         * - pemilik [kasultanan, kadipaten]
+         * - lokasi
+         * -
+         */
         Schema::create('pengajuan', function (Blueprint $table) {
             $table->increments('id');
             $table->string('nomor', 20)->notNullable();

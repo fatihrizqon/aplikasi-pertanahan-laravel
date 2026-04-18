@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\JenisHak;
-use App\Models\Kabupaten;
+use App\Models\JenisHakAdat;
 use App\Models\Kategori;
-use App\Models\Provinsi;
+use App\Models\PenggunaanRDTR;
+use App\Models\StatusKesesuaian;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,30 +17,15 @@ class DashboardController extends Controller
 {
     public function index(Request $request): View
     {
-        $provinsi = Provinsi::where('kode', 34)->first();
-        $kabupaten = Kabupaten::where('id_provinsi', $provinsi->id)
-                            ->orderBy('nama')
-                            ->get();
-
-        $provinsiJson = [
-            'id'        => $provinsi->id,
-            'kode'      => $provinsi->kode,
-            'nama'      => $provinsi->nama,
-            'geom_json' => json_decode(json_encode($provinsi->geom), true),
+        $data['filters'] = [
+            'kategori' => Kategori::get(),
+            'penggunaan' => PenggunaanRDTR::get(),
+            'JenisHak' => JenisHak::get(),
+            'JenisHakAdat' => JenisHakAdat::get(),
+            'StatusKesesuaian' => StatusKesesuaian::get(),
         ];
 
-        $data = [
-            'wilayah'  => [
-                'provinsi'  => $provinsi,
-                'kabupaten' => $kabupaten,
-            ],
-            'filters'  => [
-                'kategori' => Kategori::orderBy('id')->get(),
-                'jenis_hak' => JenisHak::orderBy('id')->get(),
-            ]
-        ];
-
-        return view('dashboard.peta.index', compact('data'))->with('provinsi', $provinsiJson);
+        return view('dashboard.peta.index', compact('data'));
     }
 
     public function overview(Request $request): View

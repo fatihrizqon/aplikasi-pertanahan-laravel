@@ -14,7 +14,7 @@ class PenggunaanRDTR extends Model
 
     public $timestamps = false;
 
-    protected $table = 'penggunaan_rtr';
+    protected $table = 'penggunaan';
 
     protected $fillable = [
         'nama',

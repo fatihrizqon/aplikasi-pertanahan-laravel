@@ -1,6 +1,5 @@
 /* ════════════════════════════════════════
    map.js
-   Depends on: provinsiData (global, set inline di blade)
    Exposes:    window.petaMap, window.provinsiLayer, window.switchBasemap, window.searchKoordinat
 ════════════════════════════════════════ */
 
@@ -39,8 +38,14 @@ window.switchBasemap = function (key) {
 
 /* ── INIT MAP ── */
 function initMap() {
+    // Guard: jangan init dua kali
+    if (window.petaMap) return;
+
     const mapEl = document.getElementById('map');
-    if (!mapEl || mapEl.offsetWidth === 0) {
+    if (!mapEl) return;
+
+    // Tunggu container punya dimensi nyata
+    if (mapEl.offsetWidth === 0 || mapEl.offsetHeight === 0) {
         requestAnimationFrame(initMap);
         return;
     }
@@ -52,33 +57,22 @@ function initMap() {
         attributionControl: true
     });
 
-    /* ── LAYER PROVINSI ── */
-    if (provinsiData && provinsiData.geom_json) {
-        const geomJson = typeof provinsiData.geom_json === 'string'
-            ? JSON.parse(provinsiData.geom_json)
-            : provinsiData.geom_json;
-
-        window.provinsiLayer = L.geoJSON(geomJson, {
-            style: {
-                color: '#dc2626',
-                weight: 1,
-                fillColor: '#dc2626',
-                fillOpacity: 0.05,
-            },
-            onEachFeature: function (feature, layer) {
-                layer.bindPopup(`<strong>${provinsiData.nama}</strong><br>Kode: ${provinsiData.kode}`);
-            }
-        }).addTo(petaMap);
-
-        // Daftarkan ke registry supaya bisa dikontrol dari sidebar
-        window.layerRegistry['batas-provinsi'] = window.provinsiLayer;
-    }
-
     // Pasang basemap default
     basemaps[activeBasemap].addTo(petaMap);
 
-    // Paksa recalculate ukuran container
+    // Paksa recalculate ukuran — beberapa kali antisipasi layout lambat
     setTimeout(() => petaMap.invalidateSize(), 100);
+    setTimeout(() => petaMap.invalidateSize(), 400);
+    setTimeout(() => petaMap.invalidateSize(), 800);
+
+    // ResizeObserver: otomatis invalidate saat ukuran container berubah
+    if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => petaMap.invalidateSize());
+        ro.observe(mapEl);
+    }
+
+    // Broadcast ke script lain bahwa peta sudah siap
+    window.dispatchEvent(new CustomEvent('petaMapReady', { detail: petaMap }));
 
     /* ── SKALA ── */
     const scaleMap = {
@@ -106,4 +100,4 @@ function initMap() {
     };
 }
 
-window.addEventListener('load', initMap);
+document.addEventListener('DOMContentLoaded', initMap);

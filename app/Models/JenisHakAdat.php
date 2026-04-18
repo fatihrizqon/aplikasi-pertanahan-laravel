@@ -9,13 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
 use App\Models\Bidang;
 
-class JenisHak extends Model
+class JenisHakAdat extends Model
 {
     use ModelTrait, ValidatableTrait, Searchable;
 
     public $timestamps = false;
 
-    protected $table = 'jenis_hak';
+    protected $table = 'jenis_hak_adat';
 
     protected $fillable = [
         'nama',
@@ -53,6 +53,6 @@ class JenisHak extends Model
 
     public function bidang(): HasMany
     {
-        return $this->hasMany(Bidang::class, 'id_jenis_hak');
+        return $this->hasMany(Bidang::class, 'id_jenis_hak_adat');
     }
 }

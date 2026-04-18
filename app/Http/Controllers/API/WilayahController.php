@@ -28,8 +28,8 @@ class WilayahController extends Controller
     {
         $request->validate(['kode' => 'required|string']);
 
-        $data = Kabupaten::where('kode', $request->kode)
-            ->orderBy('nama')
+        $data = Kabupaten::where('kode', 'like', $request->kode . '.%')
+            ->orderBy('kode')
             ->get()
             ->map(fn($item) => [
                 'value' => $item->kode,
@@ -67,6 +67,18 @@ class WilayahController extends Controller
             ]);
 
         return response()->json($data);
+    }
+
+    public function provinsiBbox(Request $request)
+    {
+        $request->validate(['kode' => 'required']);
+
+        $provinsi = Provinsi::where('kode', $request->kode)->firstOrFail();
+
+        return response()->json([
+            'nama' => $provinsi->nama,
+            'bbox' => $this->extractBbox($provinsi->geom),
+        ]);
     }
 
     public function kabupatenBbox(Request $request)
@@ -129,6 +141,22 @@ class WilayahController extends Controller
             $result = array_merge($result, $this->flattenCoordinates($item));
         }
         return $result;
+    }
+
+    public function provinsiGeojson(Request $request)
+    {
+        $request->validate(['kode' => 'required']);
+
+        $provinsi = Provinsi::where('kode', $request->kode)->firstOrFail();
+
+        return response()->json([
+            'type'     => 'Feature',
+            'geometry' => json_decode(json_encode($provinsi->geom), true),
+            'properties' => [
+                'nama' => $provinsi->nama,
+                'kode' => $provinsi->kode,
+            ],
+        ]);
     }
 
     public function kabupatenGeojson(Request $request)
