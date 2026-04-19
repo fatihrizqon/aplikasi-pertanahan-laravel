@@ -50,7 +50,6 @@ $page_subtitle = "Kelola data persil.";
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="20">#</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Aksi</th>
 
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Kategori</th>
                                     <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Kelurahan</th>
                                     <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Jalan</th>
                                     <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">No. Persil</th>
@@ -85,10 +84,6 @@ $page_subtitle = "Kelola data persil.";
                                             </a>
                                         </div>
                                         @endcan
-                                    </td>
-
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->kategori->nama ?? '-' }}
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">

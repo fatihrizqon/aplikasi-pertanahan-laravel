@@ -7,9 +7,8 @@ $unreadNotifs = auth()->user()->unreadNotifications()->latest()->get();
             dark:bg-neutral-900 dark:border-neutral-700">
     <div class="flex justify-between items-center h-14 px-4">
         <!-- Logo -->
-        <!--
         <a href="{{ route('dashboard') }}" class="shrink-0 flex items-center gap-x-3 text-lg font-semibold logo-text instrument dark:text-white">
-            <img src="https://pertanahan.jogjaprov.go.id/static/images/logo-diy.png" alt="App Logo" class="h-10 w-auto">
+            <img src="{{ asset('dist/img/logo.svg') }}" alt="App Logo" class="h-10 w-auto">
 
             <div class="flex flex-col leading-tight">
                 <span class="text-xs font-bold tracking-wide">INTANTARUBERINFO</span>
@@ -21,7 +20,6 @@ $unreadNotifs = auth()->user()->unreadNotifications()->latest()->get();
                 </span>
             </div>
         </a>
-        -->
 
         <!-- Right side -->
         <div class="ms-auto flex items-center gap-x-3">
