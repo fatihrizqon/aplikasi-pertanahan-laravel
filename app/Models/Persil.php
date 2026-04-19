@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Traits\ModelTrait;
 use App\Traits\ValidatableTrait;
-use Illuminate\Validation\Rule;
+use Clickbar\Magellan\Data\Geometries\Geometry;
+use Clickbar\Magellan\Data\Geometries\Point;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\Rule;
 
 class Persil extends Model
 {
@@ -16,6 +18,12 @@ class Persil extends Model
     public $timestamps = true;
 
     protected $table = 'persil';
+
+    protected $casts = [
+        'geom' => Geometry::class,
+    ];
+
+    protected $appends = ['lat_long'];
 
     protected $fillable = [
         'nomor_persil',
@@ -113,5 +121,32 @@ class Persil extends Model
     public function monitorings(): HasMany
     {
         return $this->hasMany(Monitoring::class, 'id_persil');
+    }
+
+    public function getLatLongAttribute(): ?array
+    {
+        $geom = $this->geom;
+
+        if (!$geom) {
+            return null;
+        }
+
+        if ($geom instanceof Point) {
+            return [
+                'lat' => $geom->getLat(),
+                'lng' => $geom->getLng(),
+            ];
+        }
+
+        if (method_exists($geom, 'getCentroid')) {
+            $centroid = $geom->getCentroid();
+
+            return [
+                'lat' => $centroid->getLat(),
+                'lng' => $centroid->getLng(),
+            ];
+        }
+
+        return null;
     }
 }

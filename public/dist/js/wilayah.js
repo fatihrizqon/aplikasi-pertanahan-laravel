@@ -33,7 +33,7 @@ const LEVEL_CONFIG = {
         children: ["kecamatan", "kelurahan"],
     },
     kecamatan: {
-        label: "Semua Kecamatan",
+        label: "Semua Kapanewon/Kemantren",
         selector: "#filter-kecamatan",
         wrapper: "#wrapper-kecamatan",
         geojson: "/api/v1/wilayah/kecamatan/geojson",
@@ -47,7 +47,7 @@ const LEVEL_CONFIG = {
         children: ["kelurahan"],
     },
     kelurahan: {
-        label: "Semua Kelurahan/Desa",
+        label: "Semua Kalurahan/Kelurahan",
         selector: "#filter-kelurahan",
         wrapper: "#wrapper-kelurahan",
         geojson: "/api/v1/wilayah/kelurahan/geojson",

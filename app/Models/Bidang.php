@@ -117,7 +117,6 @@ class Bidang extends Model
 
     public function penggunaan(): BelongsTo
     {
-        // Tabel: penggunaan (dikelola oleh PenggunaanRDTR model)
         return $this->belongsTo(PenggunaanRDTR::class, 'id_penggunaan');
     }
 

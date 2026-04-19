@@ -14,7 +14,7 @@
         </div>
 
         <div id="panel-layer" role="tabpanel" aria-labelledby="tab-layer" class="flex flex-col flex-shrink-0">
-            <div class="flex-shrink-0 border-b border-gray-100 dark:border-neutral-800" style="position:sticky; top:40px; z-index:9; background:inherit;">
+            <div class="flex-shrink-0 border-b border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900" style="top:40px; z-index:9;">
                 <div class="p-3 space-y-2">
                     <div class="relative">
                         <input type="text" id="search-koordinat" name="search-koordinat" placeholder="Cari latitude, longitude" autocomplete="off" class="py-1.5 px-3 pr-8 block w-full border-gray-200 rounded-lg text-xs focus:border-red-500 focus:ring-red-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:placeholder-neutral-500 dark:focus:ring-neutral-600">
@@ -43,7 +43,7 @@
                                        focus:border-red-500 focus:ring-red-500
                                        dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400
                                        dark:focus:ring-neutral-600">
-                            <option value="">Semua Kecamatan</option>
+                            <option value="">Semua Kapanewon/Kemantren</option>
                         </select>
                     </div>
 
@@ -53,7 +53,7 @@
                                        focus:border-red-500 focus:ring-red-500
                                        dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400
                                        dark:focus:ring-neutral-600">
-                            <option value="">Semua Kelurahan/Desa</option>
+                            <option value="">Semua Kalurahan/Kelurahan</option>
                         </select>
                     </div>
 

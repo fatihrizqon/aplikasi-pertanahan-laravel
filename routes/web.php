@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Dashboard\BidangController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\PersilController;
 use App\Http\Controllers\Dashboard\Referensi\JenisHakController;
@@ -23,6 +24,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/monitoring', [DashboardController::class, 'monitoring'])->name('dashboard.monitoring');
 
         Route::resource('persil', PersilController::class);
+        Route::get('persil/{persil}/monitoring', [PersilController::class, 'monitoring'])->name('persil.monitoring');
+        Route::get('bidang/{persil}', [BidangController::class, 'index'])->name('persil.bidang.index');
 
         Route::resource('jenis_hak', JenisHakController::class);
         Route::resource('pengelola', PengelolaController::class);

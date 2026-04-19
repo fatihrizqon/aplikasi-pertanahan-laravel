@@ -22,19 +22,46 @@ $action = empty($model->id) ? route('penggunaan_rdtr.store') : route('penggunaan
 
         <div class="grid grid-cols-3 items-start gap-4">
             <div class="col-span-1 pt-2">
-                <x-input-label for="klas">Klas</x-input-label>
+                <x-input-label for="id_kategori">Kategori</x-input-label>
             </div>
             <div class="col-span-2">
-                <x-text-input id="klas" class="block w-full" type="text" name="klas" autocomplete="klas" />
+                <x-text-input id="id_kategori" class="block w-full" type="text" name="id_kategori" autocomplete="id_kategori" />
             </div>
         </div>
 
         <div class="grid grid-cols-3 items-start gap-4">
             <div class="col-span-1 pt-2">
-                <x-input-label for="luas">Luas</x-input-label>
+                <x-input-label for="id_jenis_hak">Jenis Hak</x-input-label>
             </div>
             <div class="col-span-2">
-                <x-text-input id="luas" class="block w-full" type="text" name="luas" autocomplete="luas" />
+                <x-text-input id="id_jenis_hak" class="block w-full" type="text" name="id_jenis_hak" autocomplete="id_jenis_hak" />
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 items-start gap-4">
+            <div class="col-span-1 pt-2">
+                <x-input-label for="nomor_hak">Nomor Hak</x-input-label>
+            </div>
+            <div class="col-span-2">
+                <x-text-input id="nomor_hak" class="block w-full" type="text" name="nomor_hak" autocomplete="nomor_hak" />
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 items-start gap-4">
+            <div class="col-span-1 pt-2">
+                <x-input-label for="id_jenis_hak_adat">Jenis Hak Adat</x-input-label>
+            </div>
+            <div class="col-span-2">
+                <x-text-input id="id_jenis_hak_adat" class="block w-full" type="text" name="id_jenis_hak_adat" autocomplete="id_jenis_hak_adat" />
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 items-start gap-4">
+            <div class="col-span-1 pt-2">
+                <x-input-label for="nomor_hak_adat">Nomor Hak Adat</x-input-label>
+            </div>
+            <div class="col-span-2">
+                <x-text-input id="nomor_hak_adat" class="block w-full" type="text" name="nomor_hak_adat" autocomplete="nomor_hak_adat" />
             </div>
         </div>
 
@@ -49,45 +76,55 @@ $action = empty($model->id) ? route('penggunaan_rdtr.store') : route('penggunaan
 
         <div class="grid grid-cols-3 items-start gap-4">
             <div class="col-span-1 pt-2">
-                <x-input-label for="id_provinsi">Provinsi</x-input-label>
+                <x-input-label for="nomor_bidang">Nomor Bidang</x-input-label>
             </div>
             <div class="col-span-2">
-                <select id="filter-provinsi" class="py-1.5 px-2.5 block w-full border-gray-200 rounded-lg text-xs bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-400" disabled>
-                    <option value="34" selected>Daerah Istimewa Yogyakarta</option>
-                </select>
+                <x-text-input id="nomor_bidang" class="block w-full" type="text" name="nomor_bidang" autocomplete="nomor_bidang" />
             </div>
         </div>
 
         <div class="grid grid-cols-3 items-start gap-4">
             <div class="col-span-1 pt-2">
-                <x-input-label for="id_kabupaten">Kabupaten/Kota</x-input-label>
+                <x-input-label for="luas">Luas</x-input-label>
             </div>
             <div class="col-span-2">
-                <select id="filter-kabupaten" class="py-1.5 px-2.5 block w-full border-gray-200 rounded-lg text-xs focus:border-red-500 focus:ring-red-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:focus:ring-neutral-600">
-                    <option value="">Semua Kabupaten/Kota</option>
-                </select>
+                <x-text-input id="luas" class="block w-full" type="text" name="luas" autocomplete="luas" />
             </div>
         </div>
 
         <div class="grid grid-cols-3 items-start gap-4">
             <div class="col-span-1 pt-2">
-                <x-input-label for="id_kecamatan">Kapanewon/Kemantren</x-input-label>
+                <x-input-label for="id_pengelola">Pengelola</x-input-label>
             </div>
             <div class="col-span-2">
-                <select id="filter-kecamatan" class="py-1.5 px-2.5 block w-full border-gray-200 rounded-lg text-xs focus:border-red-500 focus:ring-red-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:focus:ring-neutral-600">
-                    <option value="">Semua Kapanewon/Kemantren</option>
-                </select>
+                <x-text-input id="id_pengelola" class="block w-full" type="text" name="id_pengelola" autocomplete="id_pengelola" />
             </div>
         </div>
 
         <div class="grid grid-cols-3 items-start gap-4">
             <div class="col-span-1 pt-2">
-                <x-input-label for="id_kelurahan">Kalurahan/Kelurahan</x-input-label>
+                <x-input-label for="id_penggunaan">Penggunaan</x-input-label>
             </div>
             <div class="col-span-2">
-                <select id="filter-kelurahan" class="py-1.5 px-2.5 block w-full border-gray-200 rounded-lg text-xs focus:border-red-500 focus:ring-red-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:focus:ring-neutral-600">
-                    <option value="">Semua Kalurahan/Kelurahan</option>
-                </select>
+                <x-text-input id="id_penggunaan" class="block w-full" type="text" name="id_penggunaan" autocomplete="id_penggunaan" />
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 items-start gap-4">
+            <div class="col-span-1 pt-2">
+                <x-input-label for="id_status_kesesuaian">Status Kesesuaian</x-input-label>
+            </div>
+            <div class="col-span-2">
+                <x-text-input id="id_status_kesesuaian" class="block w-full" type="text" name="id_status_kesesuaian" autocomplete="id_status_kesesuaian" />
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 items-start gap-4">
+            <div class="col-span-1 pt-2">
+                <x-input-label for="keterangan">Keterangan</x-input-label>
+            </div>
+            <div class="col-span-2">
+                <textarea id="keterangan" name="keterangan" class="py-2.5 sm:py-3 px-4 block w-full border-gray-200 rounded-lg sm:text-sm text-gray-800 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200 dark:placeholder-neutral-500 dark:focus:border-neutral-700 dark:focus:ring-neutral-600" rows="3" placeholder="" data-hs-textarea-auto-height=""></textarea>
             </div>
         </div>
     </div>

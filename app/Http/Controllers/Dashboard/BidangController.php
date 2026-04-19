@@ -3,21 +3,15 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Monitoring;
-use App\Models\Persil;
-use App\Traits\AuthorizationTrait;
-use App\Traits\ControllerTrait;
+use App\Models\Bidang;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class PersilController extends Controller
+class BidangController extends Controller
 {
-    use ControllerTrait;
-    use AuthorizationTrait;
-
     public function __construct()
     {
-        // $this->authorizeResource(Persil::class, 'user');
+        // $this->authorizeResource(Bidang::class, 'user');
     }
 
     /**
@@ -25,14 +19,15 @@ class PersilController extends Controller
      */
     public function index(Request $request) : View
     {
-        $models = Persil::filter($request->get('filters'))
+        $models = Bidang::filter($request->get('filters'))
                           ->search($request->get('search'))
+                          ->where('id_persil', $request->route('persil'))
                           ->orderBy('id')
                           ->paginate($request->get('per-page', 10))
                           ->appends('query', null)
                           ->withQueryString();
 
-        return view('dashboard.persil.index', compact('models'));
+        return view('dashboard.persil.bidang.index', compact('models'));
     }
 
     /**
@@ -49,9 +44,9 @@ class PersilController extends Controller
      */
     public function form(string $id = null)
     {
-        $model = empty($id) ? new Persil : $this->findModel(['id' => $id]);
+        $model = empty($id) ? new Bidang : $this->findModel(['id' => $id]);
 
-        return view('dashboard.persil.form', compact('model'));
+        return view('dashboard.persil.bidang.form', compact('model'));
     }
 
     /**
@@ -59,7 +54,7 @@ class PersilController extends Controller
      */
     public function save(Request $request, string $id = null)
     {
-        $model = empty($id) ? new Persil : $this->findModel(['id' => $id]);
+        $model = empty($id) ? new Bidang : $this->findModel(['id' => $id]);
 
         $params = $request->all();
 
@@ -83,18 +78,7 @@ class PersilController extends Controller
      */
     public function findModel(array $params)
     {
-        $model = Persil::where($params)->firstOrFail();
+        $model = Bidang::where($params)->firstOrFail();
         return $model;
-    }
-
-    /**
-     * Show the monitoring form for the specified resource.
-     */
-    public function monitoring(string $id = null)
-    {
-        $model = new Monitoring([
-            'id_persil' => $id,
-        ]);
-        return view('dashboard.persil.monitoring-dialog', compact('model'));
     }
 }

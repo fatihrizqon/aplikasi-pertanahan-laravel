@@ -1,13 +1,11 @@
 @php
-$indexHref = route('persil.index');
-$createHref = route('persil.create');
-$bidangHref = fn ($model) => route('persil.bidang.index', $model->id);
-$monitoringHref = fn ($model) => route('persil.monitoring', $model->id);
-$updateHref = fn ($model) => route('persil.edit', $model->id);
-$deleteHref = fn ($model) => route('persil.destroy', $model->id);
+$indexHref = route('persil.bidang.index', request()->route('persil'));
+#$createHref = route('persil.bidang.create');
+#$updateHref = fn ($model) => route('persil.bidang.edit', $model->id);
+#$deleteHref = fn ($model) => route('persil.bidang.destroy', $model->id);
 
-$page_title = "Persil";
-$page_subtitle = "Kelola data persil.";
+$page_title = "Bidang Persil";
+$page_subtitle = "Kelola data bidang.";
 @endphp
 
 <x-dashboard-layout>
@@ -51,12 +49,13 @@ $page_subtitle = "Kelola data persil.";
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="20">#</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Aksi</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">No. Persil</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Klas</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Kategori</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Jenis Hak</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Hak Adat</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Pengelola</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Penggunaan</th>
                                     <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Luas (m²)</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Alamat</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Koordinat</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Batas</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Status Kesesuaian</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 dark:divide-neutral-700">
@@ -69,19 +68,15 @@ $page_subtitle = "Kelola data persil.";
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
                                         @can(['update_user','activate_user','delete_user'])
                                         <div class="grid lg:flex gap-1">
-                                            <a href="{{ $updateHref($model) }}" onclick="modalFormAjax(this,event)" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-blue-500 dark:hover:text-blue-400">
+                                            <a href="#!" onclick="modalFormAjax(this,event)" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-blue-500 dark:hover:text-blue-400">
                                                 <i data-lucide="settings-2" class="w-4 h-4"></i>
                                             </a>
 
-                                            <a href="{{ $bidangHref($model) }}" class="p-2 inline-flex items-center text-xs text-yellow-800 dark:text-yellow-500 dark:hover:text-yellow-400">
-                                                <i data-lucide="map-plus" class="w-4 h-4"></i>
-                                            </a>
-
-                                            <a href="{{ $monitoringHref($model) }}" onclick="modalFormAjax(this,event)" class="p-2 inline-flex items-center text-xs text-slate-800 dark:text-slate-500 dark:hover:text-slate-400">
+                                            <a href="#!" onclick="modalFormAjax(this,event)" class="p-2 inline-flex items-center text-xs text-slate-800 dark:text-slate-500 dark:hover:text-slate-400">
                                                 <i data-lucide="monitor" class="w-4 h-4"></i>
                                             </a>
 
-                                            <a href="{{ $deleteHref($model) }}" onclick="modalConfirm(this,event)" data-title="Konfirmasi" data-content="Apakah anda yakin menghapus data tersebut?" data-method="DELETE" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-red-500 dark:hover:text-red-400">
+                                            <a href="#!" onclick="modalConfirm(this,event)" data-title="Konfirmasi" data-content="Apakah anda yakin menghapus data tersebut?" data-method="DELETE" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-red-500 dark:hover:text-red-400">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                                             </a>
                                         </div>
@@ -89,11 +84,31 @@ $page_subtitle = "Kelola data persil.";
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->nomor_persil }}
+                                        <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium" style="--warna: {{ $model->kategori->warna }}; background-color: color-mix(in srgb, var(--warna) 30%, transparent);">
+                                            <span class="animate-ping size-1.5 inline-block rounded-full" style="background-color: var(--warna)">
+                                            </span>
+                                            {{ $model->kategori->nama }}
+                                        </span>
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->klas }}
+                                        <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium" style="--warna: {{ $model->jenisHak->warna }}; background-color: color-mix(in srgb, var(--warna) 30%, transparent);">
+                                            <span class="animate-ping size-1.5 inline-block rounded-full" style="background-color: var(--warna)">
+                                            </span>
+                                            {{ $model->jenisHak->nama }}
+                                        </span>
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->jenisHakAdat->nama }}
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->pengelola->nama }}
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->penggunaan->nama }}
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
@@ -101,20 +116,7 @@ $page_subtitle = "Kelola data persil.";
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->alamat }}
-                                    </td>
-
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->lat && $model->lng ? $model->lat . ', ' . $model->lng : 'N/A' }}
-                                    </td>
-
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        <ul>
-                                            <li>Batas Utara: {{ $model->batas_utara }}</li>
-                                            <li>Batas Selatan: {{ $model->batas_selatan }}</li>
-                                            <li>Batas Timur: {{ $model->batas_timur }}</li>
-                                            <li>Batas Barat: {{ $model->batas_barat }}</li>
-                                        </ul>
+                                        {{ $model->statusKesesuaian->nama }}
                                     </td>
 
                                 </tr>
