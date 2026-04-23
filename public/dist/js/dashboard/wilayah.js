@@ -279,9 +279,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 window.provinsiLayer = L.geoJSON(geojson, {
                     style: {
                         color: "#dc2626",
-                        weight: 2.5,
-                        fillColor: "#dc2626",
-                        fillOpacity: 0.04,
+                        weight: 2,
+                        fillColor: "#000000",
+                        fillOpacity: 0.0,
                     },
                     onEachFeature(feature, layer) {
                         if (feature.properties?.nama)
