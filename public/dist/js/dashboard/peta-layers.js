@@ -1,8 +1,8 @@
 /**
- * peta-layers.js
+ * peta-layers.js  (OPTIMIZED)
  *
  * Tanggung jawab:
- *   1. Inisialisasi FeatureGroup (L.featureGroup) untuk setiap item layer di sidebar
+ *   1. Inisialisasi L.geoJSON layer untuk setiap item layer di sidebar
  *   2. Mendengarkan perubahan checkbox layer di sidebar
  *   3. Mendengarkan perubahan filter wilayah (kabupaten/kecamatan/kelurahan)
  *   4. Mendengarkan event moveend/zoomend Leaflet (bbox berubah)
@@ -19,26 +19,55 @@
  *
  * Dependensi global (dari map.js):
  *   window.petaMap  — instance L.Map
+ *
+ * ══════════════════════════════════════════════════════════════════════════════
+ * OPTIMASI:
+ *   1. ZOOM GATE (MIN_ZOOM_BIDANG = 14) — fetch hanya dilakukan saat zoom ≥ 14
+ *      (skala ≤ 1:17.000). Di zoom 13 (skala 1:34.000) bidang dikosongkan + pesan
+ *      "perbesar peta" ditampilkan.
+ *   2. CANVAS RENDERER — menggunakan L.canvas() menggantikan SVG default Leaflet.
+ *      Jauh lebih efisien untuk 10.000+ polygon (satu <canvas> vs ribuan <path> di DOM).
+ *   3. BATCH L.geoJSON — satu L.geoJSON per layer-type (bukan satu per feature).
+ *      Mengurangi overhead Leaflet dari O(n) layer objects menjadi O(1) per tipe.
+ *   4. AbortController — request sebelumnya dibatalkan saat fetch baru dimulai.
+ *      Mencegah race condition dan trafik jaringan yang terbuang.
+ *   5. DEBOUNCE 600 ms — dipertahankan.
+ * ══════════════════════════════════════════════════════════════════════════════
  */
 
 "use strict";
 
+// ── Konstanta ─────────────────────────────────────────────────────────────────
+
+/**
+ * Zoom minimum sebelum layer bidang dimuat.
+ * zoom 14 ≈ skala 1:17.000 — bidang tanah sudah cukup besar untuk ditampilkan.
+ * Di zoom 13 (skala 1:34.000) bidang terlalu kecil & jumlahnya terlalu banyak.
+ */
+const MIN_ZOOM_BIDANG = 14;
+
+/**
+ * Canvas renderer bersama — jauh lebih efisien daripada SVG default Leaflet
+ * saat menampilkan ribuan polygon sekaligus.
+ */
+const _canvasRenderer = L.canvas({ padding: 0.5 });
+
 // ── State ────────────────────────────────────────────────────────────────────
 
 const petaLayers = {
-    // FeatureGroup per kategori_id       → { [id]: { group: L.FeatureGroup, opacity: 1 } }
+    // L.GeoJSON layer per kategori_id  → { [id]: { layer: L.GeoJSON, opacity: 1 } }
     groups: {},
 
-    // FeatureGroup per penggunaan_id
+    // L.GeoJSON layer per penggunaan_id
     penggunaanGroups: {},
 
-    // FeatureGroup per jenis_hak_id
+    // L.GeoJSON layer per jenis_hak_id
     jenisHakGroups: {},
 
-    // FeatureGroup per jenis_hak_adat_id
+    // L.GeoJSON layer per jenis_hak_adat_id
     jenisHakAdatGroups: {},
 
-    // FeatureGroup per status_kesesuaian_id
+    // L.GeoJSON layer per status_kesesuaian_id
     statusKesesuaianGroups: {},
 
     // Filter wilayah aktif
@@ -50,26 +79,54 @@ const petaLayers = {
 
     // Debounce timer untuk moveend
     _fetchTimer: null,
+
+    // AbortController aktif per fetch-type (untuk membatalkan request lama)
+    _abortControllers: {
+        kategori: null,
+        penggunaan: null,
+        jenisHak: null,
+        jenisHakAdat: null,
+        statusKesesuaian: null,
+    },
 };
 
-// ── Inisialisasi FeatureGroup dari DOM ────────────────────────────────────────
+// ── Inisialisasi Layer dari DOM ───────────────────────────────────────────────
 //
-// Setiap checkbox layer di sidebar memiliki data-*-id yang berisi ID record.
-// Kita daftarkan L.featureGroup() untuk setiap ID agar polygon dapat ditampung
-// sebelum ada fetch. Fungsi ini dipanggil sekali saat DOM siap + petaMap tersedia.
+// Menggunakan L.geoJSON (bukan L.featureGroup) agar polygon dapat di-render
+// sekaligus dalam satu layer object — jauh lebih efisien saat ada 100rb+ bidang.
+// Canvas renderer digunakan agar tidak ada <path> SVG per polygon di DOM.
 
 function initLayerGroups() {
     const map = window.petaMap;
     if (!map) return;
 
+    // Helper: buat L.geoJSON dengan canvas renderer
+    const makeLayer = (defaultColor) =>
+        L.geoJSON(null, {
+            renderer: _canvasRenderer,
+            style: (feature) => {
+                const warna = feature?.properties?._warna ?? defaultColor;
+                return {
+                    color: warna,
+                    fillColor: warna,
+                    fillOpacity: 0.25,
+                    weight: 1.5,
+                    opacity: 1,
+                };
+            },
+            onEachFeature(feature, lyr) {
+                const { no_bidang, no_persil, luas } = feature.properties ?? {};
+                lyr.bindPopup(buildPopup(no_bidang, no_persil, luas), {
+                    maxWidth: 220,
+                });
+            },
+        }).addTo(map);
+
     // Kategori
     document.querySelectorAll(".layer-kategori-cb").forEach((cb) => {
         const id = parseInt(cb.dataset.kategoriId);
         if (!id || petaLayers.groups[id]) return;
-        petaLayers.groups[id] = {
-            group: L.featureGroup().addTo(map),
-            opacity: 1,
-        };
+        petaLayers.groups[id] = { layer: makeLayer("#3b82f6"), opacity: 1 };
     });
 
     // Penggunaan
@@ -77,7 +134,7 @@ function initLayerGroups() {
         const id = parseInt(cb.dataset.penggunaanId);
         if (!id || petaLayers.penggunaanGroups[id]) return;
         petaLayers.penggunaanGroups[id] = {
-            group: L.featureGroup().addTo(map),
+            layer: makeLayer("#10b981"),
             opacity: 1,
         };
     });
@@ -87,7 +144,7 @@ function initLayerGroups() {
         const id = parseInt(cb.dataset.jenisHakId);
         if (!id || petaLayers.jenisHakGroups[id]) return;
         petaLayers.jenisHakGroups[id] = {
-            group: L.featureGroup().addTo(map),
+            layer: makeLayer("#f59e0b"),
             opacity: 1,
         };
     });
@@ -97,7 +154,7 @@ function initLayerGroups() {
         const id = parseInt(cb.dataset.jenisHakAdatId);
         if (!id || petaLayers.jenisHakAdatGroups[id]) return;
         petaLayers.jenisHakAdatGroups[id] = {
-            group: L.featureGroup().addTo(map),
+            layer: makeLayer("#8b5cf6"),
             opacity: 1,
         };
     });
@@ -107,22 +164,55 @@ function initLayerGroups() {
         const id = parseInt(cb.dataset.statusKesesuaianId);
         if (!id || petaLayers.statusKesesuaianGroups[id]) return;
         petaLayers.statusKesesuaianGroups[id] = {
-            group: L.featureGroup().addTo(map),
+            layer: makeLayer("#ef4444"),
             opacity: 1,
         };
+    });
+}
+
+// ── Zoom gate helper ──────────────────────────────────────────────────────────
+
+/**
+ * Kembalikan true jika zoom saat ini cukup tinggi untuk memuat bidang.
+ */
+function isZoomCukup() {
+    if (!window.petaMap) return false;
+    return window.petaMap.getZoom() >= MIN_ZOOM_BIDANG;
+}
+
+/**
+ * Kosongkan semua layer bidang yang aktif dan tampilkan pesan zoom.
+ * Dipanggil saat zoom < MIN_ZOOM_BIDANG.
+ */
+function clearAllBidangLayers() {
+    const clearReg = (registry) => {
+        Object.values(registry).forEach((r) => r?.layer?.clearLayers?.());
+    };
+    clearReg(petaLayers.groups);
+    clearReg(petaLayers.penggunaanGroups);
+    clearReg(petaLayers.jenisHakGroups);
+    clearReg(petaLayers.jenisHakAdatGroups);
+    clearReg(petaLayers.statusKesesuaianGroups);
+
+    // Tampilkan pesan "zoom lebih dekat" di semua label count yang terlihat
+    document.querySelectorAll(".bidang-count").forEach((el) => {
+        el.textContent = "Perbesar peta untuk memuat bidang";
     });
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 function initPetaLayers() {
-    // Inisialisasi semua FeatureGroup sekarang bahwa petaMap sudah ada
     initLayerGroups();
 
-    // Fetch ulang saat peta digeser/zoom — debounce 600ms
     window.petaMap.on("moveend zoomend", () => {
         clearTimeout(petaLayers._fetchTimer);
         petaLayers._fetchTimer = setTimeout(() => {
+            if (!isZoomCukup()) {
+                clearAllBidangLayers();
+                return;
+            }
+
             const aktifKategori = getKategoriAktif();
             const aktifPenggunaan = getPenggunaanAktif();
             const aktifJenisHak = getJenisHakAktif();
@@ -219,7 +309,7 @@ function setLoadingState(kategoriIds, loading) {
         );
         if (!groupEl) return;
         const label = groupEl.querySelector(".bidang-count");
-        if (label && loading) label.textContent = "Memuat…";
+        if (label && loading) label.textContent = "Memuat\u2026";
     });
 }
 
@@ -240,12 +330,26 @@ function updateGroupCheckboxState(groupCbId, cbSelector) {
     }
 }
 
+// ── Abort helper ──────────────────────────────────────────────────────────────
+
+/**
+ * Batalkan request sebelumnya (jika ada) dan buat AbortController baru.
+ * Menghindari race condition dan request duplikat yang terbuang.
+ */
+function freshAbortController(key) {
+    petaLayers._abortControllers[key]?.abort();
+    const ctrl = new AbortController();
+    petaLayers._abortControllers[key] = ctrl;
+    return ctrl;
+}
+
 // ── Fetch & Render: Kategori ──────────────────────────────────────────────────
 
 async function fetchDanRenderBidang(kategoriIds) {
     if (!kategoriIds.length) return;
 
-    kategoriIds.forEach((id) => petaLayers.groups[id]?.group.clearLayers());
+    const ctrl = freshAbortController("kategori");
+    kategoriIds.forEach((id) => petaLayers.groups[id]?.layer.clearLayers());
     setLoadingState(kategoriIds, true);
 
     const params = new URLSearchParams();
@@ -253,7 +357,9 @@ async function fetchDanRenderBidang(kategoriIds) {
     buildWilayahParams(params);
 
     try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`);
+        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, {
+            signal: ctrl.signal,
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const geojson = await res.json();
@@ -262,29 +368,28 @@ async function fetchDanRenderBidang(kategoriIds) {
             counts[id] = 0;
         });
 
+        // Kelompokkan features per kategori_id
+        const featuresByKategori = {};
         geojson.features?.forEach((feature) => {
-            const { kategori_id, warna, no_bidang, no_persil, luas } =
-                feature.properties;
-            const reg = petaLayers.groups[kategori_id];
-            if (!reg) return;
-
-            const polygon = L.geoJSON(feature, {
-                style: {
-                    color: warna ?? "#3b82f6",
-                    fillColor: warna ?? "#3b82f6",
-                    fillOpacity: 0.25 * reg.opacity,
-                    weight: 1.5,
-                    opacity: reg.opacity,
-                },
-            });
-
-            polygon.bindPopup(buildPopup(no_bidang, no_persil, luas));
-            reg.group.addLayer(polygon);
-            counts[kategori_id] = (counts[kategori_id] ?? 0) + 1;
+            const { kategori_id, warna } = feature.properties;
+            feature.properties._warna = warna ?? "#3b82f6";
+            if (!featuresByKategori[kategori_id])
+                featuresByKategori[kategori_id] = [];
+            featuresByKategori[kategori_id].push(feature);
         });
 
-        kategoriIds.forEach((id) => setLayerCountLabel(id, counts[id] ?? 0));
+        // addData sekaligus per layer — satu operasi DOM
+        kategoriIds.forEach((id) => {
+            const reg = petaLayers.groups[id];
+            if (!reg) return;
+            const features = featuresByKategori[id] ?? [];
+            if (features.length > 0)
+                reg.layer.addData({ type: "FeatureCollection", features });
+            counts[id] = features.length;
+            setLayerCountLabel(id, counts[id]);
+        });
     } catch (err) {
+        if (err.name === "AbortError") return;
         console.error("[peta-layers] fetchDanRenderBidang error:", err);
         kategoriIds.forEach((id) => {
             const label = document.querySelector(
@@ -300,8 +405,9 @@ async function fetchDanRenderBidang(kategoriIds) {
 async function fetchDanRenderBidangPenggunaan(penggunaanIds) {
     if (!penggunaanIds.length) return;
 
+    const ctrl = freshAbortController("penggunaan");
     penggunaanIds.forEach((id) =>
-        petaLayers.penggunaanGroups[id]?.group.clearLayers(),
+        petaLayers.penggunaanGroups[id]?.layer.clearLayers(),
     );
 
     const params = new URLSearchParams();
@@ -309,36 +415,31 @@ async function fetchDanRenderBidangPenggunaan(penggunaanIds) {
     buildWilayahParams(params);
 
     try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`);
+        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, {
+            signal: ctrl.signal,
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const geojson = await res.json();
+        const featuresByPenggunaan = {};
 
         geojson.features?.forEach((feature) => {
-            const {
-                penggunaan_id,
-                penggunaan_warna,
-                no_bidang,
-                no_persil,
-                luas,
-            } = feature.properties;
-            const reg = petaLayers.penggunaanGroups[penggunaan_id];
+            const { penggunaan_id, penggunaan_warna } = feature.properties;
+            feature.properties._warna = penggunaan_warna ?? "#10b981";
+            if (!featuresByPenggunaan[penggunaan_id])
+                featuresByPenggunaan[penggunaan_id] = [];
+            featuresByPenggunaan[penggunaan_id].push(feature);
+        });
+
+        penggunaanIds.forEach((id) => {
+            const reg = petaLayers.penggunaanGroups[id];
             if (!reg) return;
-
-            const polygon = L.geoJSON(feature, {
-                style: {
-                    color: penggunaan_warna ?? "#10b981",
-                    fillColor: penggunaan_warna ?? "#10b981",
-                    fillOpacity: 0.25 * reg.opacity,
-                    weight: 1.5,
-                    opacity: reg.opacity,
-                },
-            });
-
-            polygon.bindPopup(buildPopup(no_bidang, no_persil, luas));
-            reg.group.addLayer(polygon);
+            const features = featuresByPenggunaan[id] ?? [];
+            if (features.length > 0)
+                reg.layer.addData({ type: "FeatureCollection", features });
         });
     } catch (err) {
+        if (err.name === "AbortError") return;
         console.error(
             "[peta-layers] fetchDanRenderBidangPenggunaan error:",
             err,
@@ -351,8 +452,9 @@ async function fetchDanRenderBidangPenggunaan(penggunaanIds) {
 async function fetchDanRenderBidangJenisHak(jenisHakIds) {
     if (!jenisHakIds.length) return;
 
+    const ctrl = freshAbortController("jenisHak");
     jenisHakIds.forEach((id) =>
-        petaLayers.jenisHakGroups[id]?.group.clearLayers(),
+        petaLayers.jenisHakGroups[id]?.layer.clearLayers(),
     );
 
     const params = new URLSearchParams();
@@ -360,36 +462,31 @@ async function fetchDanRenderBidangJenisHak(jenisHakIds) {
     buildWilayahParams(params);
 
     try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`);
+        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, {
+            signal: ctrl.signal,
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const geojson = await res.json();
+        const featuresByJenisHak = {};
 
         geojson.features?.forEach((feature) => {
-            const {
-                jenis_hak_id,
-                jenis_hak_warna,
-                no_bidang,
-                no_persil,
-                luas,
-            } = feature.properties;
-            const reg = petaLayers.jenisHakGroups[jenis_hak_id];
+            const { jenis_hak_id, jenis_hak_warna } = feature.properties;
+            feature.properties._warna = jenis_hak_warna ?? "#f59e0b";
+            if (!featuresByJenisHak[jenis_hak_id])
+                featuresByJenisHak[jenis_hak_id] = [];
+            featuresByJenisHak[jenis_hak_id].push(feature);
+        });
+
+        jenisHakIds.forEach((id) => {
+            const reg = petaLayers.jenisHakGroups[id];
             if (!reg) return;
-
-            const polygon = L.geoJSON(feature, {
-                style: {
-                    color: jenis_hak_warna ?? "#f59e0b",
-                    fillColor: jenis_hak_warna ?? "#f59e0b",
-                    fillOpacity: 0.25 * reg.opacity,
-                    weight: 1.5,
-                    opacity: reg.opacity,
-                },
-            });
-
-            polygon.bindPopup(buildPopup(no_bidang, no_persil, luas));
-            reg.group.addLayer(polygon);
+            const features = featuresByJenisHak[id] ?? [];
+            if (features.length > 0)
+                reg.layer.addData({ type: "FeatureCollection", features });
         });
     } catch (err) {
+        if (err.name === "AbortError") return;
         console.error("[peta-layers] fetchDanRenderBidangJenisHak error:", err);
     }
 }
@@ -399,8 +496,9 @@ async function fetchDanRenderBidangJenisHak(jenisHakIds) {
 async function fetchDanRenderBidangJenisHakAdat(jenisHakAdatIds) {
     if (!jenisHakAdatIds.length) return;
 
+    const ctrl = freshAbortController("jenisHakAdat");
     jenisHakAdatIds.forEach((id) =>
-        petaLayers.jenisHakAdatGroups[id]?.group.clearLayers(),
+        petaLayers.jenisHakAdatGroups[id]?.layer.clearLayers(),
     );
 
     const params = new URLSearchParams();
@@ -408,36 +506,32 @@ async function fetchDanRenderBidangJenisHakAdat(jenisHakAdatIds) {
     buildWilayahParams(params);
 
     try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`);
+        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, {
+            signal: ctrl.signal,
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const geojson = await res.json();
+        const featuresByJenisHakAdat = {};
 
         geojson.features?.forEach((feature) => {
-            const {
-                jenis_hak_adat_id,
-                jenis_hak_adat_warna,
-                no_bidang,
-                no_persil,
-                luas,
-            } = feature.properties;
-            const reg = petaLayers.jenisHakAdatGroups[jenis_hak_adat_id];
+            const { jenis_hak_adat_id, jenis_hak_adat_warna } =
+                feature.properties;
+            feature.properties._warna = jenis_hak_adat_warna ?? "#8b5cf6";
+            if (!featuresByJenisHakAdat[jenis_hak_adat_id])
+                featuresByJenisHakAdat[jenis_hak_adat_id] = [];
+            featuresByJenisHakAdat[jenis_hak_adat_id].push(feature);
+        });
+
+        jenisHakAdatIds.forEach((id) => {
+            const reg = petaLayers.jenisHakAdatGroups[id];
             if (!reg) return;
-
-            const polygon = L.geoJSON(feature, {
-                style: {
-                    color: jenis_hak_adat_warna ?? "#8b5cf6",
-                    fillColor: jenis_hak_adat_warna ?? "#8b5cf6",
-                    fillOpacity: 0.25 * reg.opacity,
-                    weight: 1.5,
-                    opacity: reg.opacity,
-                },
-            });
-
-            polygon.bindPopup(buildPopup(no_bidang, no_persil, luas));
-            reg.group.addLayer(polygon);
+            const features = featuresByJenisHakAdat[id] ?? [];
+            if (features.length > 0)
+                reg.layer.addData({ type: "FeatureCollection", features });
         });
     } catch (err) {
+        if (err.name === "AbortError") return;
         console.error(
             "[peta-layers] fetchDanRenderBidangJenisHakAdat error:",
             err,
@@ -450,8 +544,9 @@ async function fetchDanRenderBidangJenisHakAdat(jenisHakAdatIds) {
 async function fetchDanRenderBidangStatusKesesuaian(statusKesesuaianIds) {
     if (!statusKesesuaianIds.length) return;
 
+    const ctrl = freshAbortController("statusKesesuaian");
     statusKesesuaianIds.forEach((id) =>
-        petaLayers.statusKesesuaianGroups[id]?.group.clearLayers(),
+        petaLayers.statusKesesuaianGroups[id]?.layer.clearLayers(),
     );
 
     const params = new URLSearchParams();
@@ -461,36 +556,32 @@ async function fetchDanRenderBidangStatusKesesuaian(statusKesesuaianIds) {
     buildWilayahParams(params);
 
     try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`);
+        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, {
+            signal: ctrl.signal,
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const geojson = await res.json();
+        const featuresByStatus = {};
 
         geojson.features?.forEach((feature) => {
-            const {
-                status_kesesuaian_id,
-                status_kesesuaian_warna,
-                no_bidang,
-                no_persil,
-                luas,
-            } = feature.properties;
-            const reg = petaLayers.statusKesesuaianGroups[status_kesesuaian_id];
+            const { status_kesesuaian_id, status_kesesuaian_warna } =
+                feature.properties;
+            feature.properties._warna = status_kesesuaian_warna ?? "#ef4444";
+            if (!featuresByStatus[status_kesesuaian_id])
+                featuresByStatus[status_kesesuaian_id] = [];
+            featuresByStatus[status_kesesuaian_id].push(feature);
+        });
+
+        statusKesesuaianIds.forEach((id) => {
+            const reg = petaLayers.statusKesesuaianGroups[id];
             if (!reg) return;
-
-            const polygon = L.geoJSON(feature, {
-                style: {
-                    color: status_kesesuaian_warna ?? "#ef4444",
-                    fillColor: status_kesesuaian_warna ?? "#ef4444",
-                    fillOpacity: 0.25 * reg.opacity,
-                    weight: 1.5,
-                    opacity: reg.opacity,
-                },
-            });
-
-            polygon.bindPopup(buildPopup(no_bidang, no_persil, luas));
-            reg.group.addLayer(polygon);
+            const features = featuresByStatus[id] ?? [];
+            if (features.length > 0)
+                reg.layer.addData({ type: "FeatureCollection", features });
         });
     } catch (err) {
+        if (err.name === "AbortError") return;
         console.error(
             "[peta-layers] fetchDanRenderBidangStatusKesesuaian error:",
             err,
@@ -505,7 +596,7 @@ function buildPopup(no_bidang, no_persil, luas) {
         <div style="min-width:160px; font-size:12px; line-height:1.6;">
             <p style="font-weight:600; margin:0 0 4px;">${escHtml(no_bidang ?? "-")}</p>
             <p style="color:#6b7280; margin:0;">Persil: ${escHtml(no_persil ?? "-")}</p>
-            ${luas ? `<p style="color:#6b7280; margin:0;">Luas: ${Number(luas).toLocaleString("id-ID")} m²</p>` : ""}
+            ${luas ? `<p style="color:#6b7280; margin:0;">Luas: ${Number(luas).toLocaleString("id-ID")} m\u00B2</p>` : ""}
         </div>
     `;
 }
@@ -551,12 +642,12 @@ function onKategoriChange() {
     document.querySelectorAll(".layer-kategori-cb").forEach((cb) => {
         const id = parseInt(cb.dataset.kategoriId);
         if (!id) return;
-        if (!cb.checked) petaLayers.groups[id]?.group.clearLayers();
+        if (!cb.checked) petaLayers.groups[id]?.layer.clearLayers();
     });
 
     updateGroupCheckboxState("cb-group-kategori", ".layer-kategori-cb");
 
-    if (aktif.length > 0) fetchDanRenderBidang(aktif);
+    if (aktif.length > 0 && isZoomCukup()) fetchDanRenderBidang(aktif);
 }
 
 function onPenggunaanChange() {
@@ -565,12 +656,13 @@ function onPenggunaanChange() {
     document.querySelectorAll(".layer-penggunaan-cb").forEach((cb) => {
         const id = parseInt(cb.dataset.penggunaanId);
         if (!id) return;
-        if (!cb.checked) petaLayers.penggunaanGroups[id]?.group.clearLayers();
+        if (!cb.checked) petaLayers.penggunaanGroups[id]?.layer.clearLayers();
     });
 
     updateGroupCheckboxState("cb-group-penggunaan", ".layer-penggunaan-cb");
 
-    if (aktif.length > 0) fetchDanRenderBidangPenggunaan(aktif);
+    if (aktif.length > 0 && isZoomCukup())
+        fetchDanRenderBidangPenggunaan(aktif);
 }
 
 function onJenisHakChange() {
@@ -579,12 +671,12 @@ function onJenisHakChange() {
     document.querySelectorAll(".layer-jenis-hak-cb").forEach((cb) => {
         const id = parseInt(cb.dataset.jenisHakId);
         if (!id) return;
-        if (!cb.checked) petaLayers.jenisHakGroups[id]?.group.clearLayers();
+        if (!cb.checked) petaLayers.jenisHakGroups[id]?.layer.clearLayers();
     });
 
     updateGroupCheckboxState("cb-group-jenis-hak", ".layer-jenis-hak-cb");
 
-    if (aktif.length > 0) fetchDanRenderBidangJenisHak(aktif);
+    if (aktif.length > 0 && isZoomCukup()) fetchDanRenderBidangJenisHak(aktif);
 }
 
 function onJenisHakAdatChange() {
@@ -593,7 +685,7 @@ function onJenisHakAdatChange() {
     document.querySelectorAll(".layer-jenis-hak-adat-cb").forEach((cb) => {
         const id = parseInt(cb.dataset.jenisHakAdatId);
         if (!id) return;
-        if (!cb.checked) petaLayers.jenisHakAdatGroups[id]?.group.clearLayers();
+        if (!cb.checked) petaLayers.jenisHakAdatGroups[id]?.layer.clearLayers();
     });
 
     updateGroupCheckboxState(
@@ -601,7 +693,8 @@ function onJenisHakAdatChange() {
         ".layer-jenis-hak-adat-cb",
     );
 
-    if (aktif.length > 0) fetchDanRenderBidangJenisHakAdat(aktif);
+    if (aktif.length > 0 && isZoomCukup())
+        fetchDanRenderBidangJenisHakAdat(aktif);
 }
 
 function onStatusKesesuaianChange() {
@@ -611,7 +704,7 @@ function onStatusKesesuaianChange() {
         const id = parseInt(cb.dataset.statusKesesuaianId);
         if (!id) return;
         if (!cb.checked)
-            petaLayers.statusKesesuaianGroups[id]?.group.clearLayers();
+            petaLayers.statusKesesuaianGroups[id]?.layer.clearLayers();
     });
 
     updateGroupCheckboxState(
@@ -619,7 +712,8 @@ function onStatusKesesuaianChange() {
         ".layer-status-kesesuaian-cb",
     );
 
-    if (aktif.length > 0) fetchDanRenderBidangStatusKesesuaian(aktif);
+    if (aktif.length > 0 && isZoomCukup())
+        fetchDanRenderBidangStatusKesesuaian(aktif);
 }
 
 // ── Opacity ───────────────────────────────────────────────────────────────────
@@ -637,10 +731,8 @@ function updateOpacity(rangeEl, groupId) {
             const r = registryMap[id];
             if (!r) return;
             r.opacity = val;
-            r.group.eachLayer((layer) => {
-                if (layer.setStyle)
-                    layer.setStyle({ fillOpacity: 0.25 * val, opacity: val });
-            });
+            // L.geoJSON.setStyle() berlaku ke semua sub-layer sekaligus
+            r.layer.setStyle({ fillOpacity: 0.25 * val, opacity: val });
         });
     };
 
@@ -673,10 +765,7 @@ function updateOpacity(rangeEl, groupId) {
     const reg = petaLayers.groups[id];
     if (!reg) return;
     reg.opacity = val;
-    reg.group.eachLayer((layer) => {
-        if (layer.setStyle)
-            layer.setStyle({ fillOpacity: 0.25 * val, opacity: val });
-    });
+    reg.layer.setStyle({ fillOpacity: 0.25 * val, opacity: val });
 }
 
 // ── Toggle group chevron ──────────────────────────────────────────────────────
@@ -709,11 +798,10 @@ function escAttr(str) {
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
-// Tunggu map.js broadcast event petaMapReady sebelum inisialisasi layer
-// Ini menghilangkan race condition antara map.js dan peta-layers.js
 if (window.petaMap) {
-    // Jika sudah ada (edge case urutan load berbeda), langsung init
     initPetaLayers();
 } else {
-    window.addEventListener('petaMapReady', () => initPetaLayers(), { once: true });
+    window.addEventListener("petaMapReady", () => initPetaLayers(), {
+        once: true,
+    });
 }
