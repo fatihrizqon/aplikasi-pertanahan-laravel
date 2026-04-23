@@ -27,7 +27,7 @@
 </div>
 
 {{-- ── Label Skala ── --}}
-<div style="position:fixed;bottom:12px;right:12px;z-index:1100;display:flex;font-size:10px;line-height:1;user-select:none;">
-    <div style="background:rgba(255,255,255,.92);border:1px solid #9ca3af;padding:4px 8px;color:#6b7280;">SKALA</div>
-    <div id="map-scale" style="background:rgba(255,255,255,.92);border:1px solid #9ca3af;border-left:none;padding:4px 8px;font-weight:600;color:#374151;">= 1 : 546 RIBU</div>
+<div style="position:fixed;bottom:0;right:0;z-index:1100;display:flex;font-size:10px;line-height:1;user-select:none;font-family:monospace;">
+    <div style="width:80px;background:#fff;border:1px solid #9ca3af;padding:4px;text-align:center;color:#6b7280;">SKALA</div>
+    <div id="map-scale" style="width:140px;background:#fff;border:1px solid #9ca3af;border-left:none;padding:4px;text-align:center;font-weight:600;color:#374151;white-space:nowrap;overflow:hidden;">1 : 546.000</div>
 </div>
