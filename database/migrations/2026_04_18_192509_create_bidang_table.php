@@ -18,8 +18,9 @@ return new class extends Migration
             $table->foreignId('id_jenis_hak_adat')->references('id')->on('jenis_hak_adat');
             $table->foreignId('id_kategori')->references('id')->on('kategori');
             $table->foreignId('id_status_kesesuaian')->references('id')->on('status_kesesuaian');
-            $table->foreignId('id_pengelola')->references('id')->on('pengelola');
-            $table->foreignId('id_penggunaan')->references('id')->on('penggunaan');
+            $table->foreignId('id_pengelola')->references('id')->on('pengelola')->nullable();
+            $table->foreignId('id_penggunaan')->references('id')->on('penggunaan')->nullable();
+            $table->foreignId('id_kelurahan')->references('id')->on('kelurahan');
             $table->enum('pemilik', ['kasultanan', 'kadipaten'])->nullable();
             $table->string('nomor_hak')->nullable();
             $table->string('nomor_hak_adat')->nullable();
