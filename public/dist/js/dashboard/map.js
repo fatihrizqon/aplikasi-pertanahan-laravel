@@ -17,6 +17,10 @@ const basemaps = {
         attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a>',
         maxZoom: 17
     }),
+    grayscale: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 17
+    }),
 };
 
 let activeBasemap = 'osm';
@@ -54,7 +58,8 @@ function initMap() {
         center: [-7.805303377839844, 110.36463940268219],
         zoom: 10,
         zoomControl: false,
-        attributionControl: true
+        attributionControl: true,
+        preverCanvas: true
     });
 
     // Pasang basemap default

@@ -21,6 +21,9 @@
     <button id="btn-terrain" onclick="switchBasemap('terrain')" title="Terrain" class="basemap-btn" style="height:32px;padding:0 10px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:10px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(0,0,0,.1);">
         <i data-lucide="mountain" style="width:12px;height:12px;"></i> Terrain
     </button>
+    <button id="btn-grayscale" onclick="switchBasemap('grayscale')" title="Grayscale" class="basemap-btn" style="height:32px;padding:0 10px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:10px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(0,0,0,.1);">
+        <i data-lucide="sun-moon" style="width:12px;height:12px;"></i> Grayscale
+    </button>
 </div>
 
 {{-- ── Label Skala ── --}}
