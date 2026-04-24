@@ -45,6 +45,47 @@ function getZoomTierIndex(zoom) {
 
 const _canvasRenderer = L.canvas({ padding: 0.5 });
 
+// ── Vertex layer group (singleton) ───────────────────────────────────────────
+// Menampilkan titik vertex saat bidang diklik; di-clear setiap klik baru.
+let _vertexLayerGroup = null;
+let _activeVertexBidangId = null;
+
+function getVertexLayerGroup() {
+    if (!_vertexLayerGroup && window.petaMap) {
+        _vertexLayerGroup = L.layerGroup().addTo(window.petaMap);
+    }
+    return _vertexLayerGroup;
+}
+
+function clearVertices() {
+    _vertexLayerGroup?.clearLayers();
+    _activeVertexBidangId = null;
+}
+
+function renderVertices(feature) {
+    const vlg = getVertexLayerGroup();
+    if (!vlg) return;
+    vlg.clearLayers();
+
+    const { type, coordinates } = feature.geometry;
+    const rings = type === 'Polygon'
+        ? coordinates
+        : coordinates.flat(); // MultiPolygon → flatten ke array ring
+
+    rings.forEach((ring) => {
+        ring.forEach(([lng, lat]) => {
+            L.circleMarker([lat, lng], {
+                radius: 3,
+                color: '#ffffff',
+                weight: 1.5,
+                fillColor: '#1d4ed8',
+                fillOpacity: 1,
+                interactive: false,
+            }).addTo(vlg);
+        });
+    });
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const petaLayers = {
@@ -181,9 +222,23 @@ function initLayerGroups() {
                 };
             },
             onEachFeature(feature, lyr) {
-                const { no_bidang, no_persil, luas } = feature.properties ?? {};
+                const { id, no_bidang, no_persil, luas } = feature.properties ?? {};
+
+                // Bind popup keterangan (tidak hilang saat klik)
                 lyr.bindPopup(buildPopup(no_bidang, no_persil, luas), {
                     maxWidth: 220,
+                });
+
+                // Tampilkan vertex saat bidang diklik, lalu buka popup
+                lyr.on('click', function (e) {
+                    // Toggle: klik bidang sama → sembunyikan vertex
+                    if (_activeVertexBidangId === id) {
+                        clearVertices();
+                    } else {
+                        _activeVertexBidangId = id;
+                        renderVertices(feature);
+                        lyr.openPopup(e.latlng);
+                    }
                 });
             },
         }).addTo(map);
@@ -219,10 +274,74 @@ function initLayerGroups() {
     });
 }
 
+// ── Default layer load (saat halaman pertama dimuat, low res) ─────────────────
+// Fetch semua bidang dengan bbox current viewport + all=1, tanpa perlu
+// checkbox aktif. Hasilnya didistribusikan ke layer group masing-masing
+// berdasarkan warna kategori (default layer).
+
+let _defaultLayerLoaded = false;
+
+async function fetchDefaultLayer() {
+    if (_defaultLayerLoaded) return;
+    if (!window.petaMap) return;
+
+    const zoom = window.petaMap.getZoom();
+    if (zoom < MIN_ZOOM_BIDANG) return;
+
+    const params = new URLSearchParams();
+    params.set('all', '1');
+    buildWilayahParams(params);
+
+    try {
+        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`);
+        if (!res.ok) return;
+        const geojson = await res.json();
+        if (!geojson.features?.length) return;
+
+        // Tag warna → gunakan warna kategori sebagai default
+        geojson.features.forEach((f) => {
+            f.properties._warna = f.properties.warna ?? '#3b82f6';
+        });
+
+        // Simpan ke cache kategori agar bisa di-rerender saat tier berubah
+        petaLayers._cache.kategori = { ids: [], geojson };
+
+        const tolerance = getTolerance(zoom);
+
+        // Distribusikan ke groups berdasarkan kategori_id jika sudah terdaftar,
+        // atau render semua ke layer sementara
+        const featuresByKategori = {};
+        geojson.features.forEach((feature) => {
+            const id = feature.properties.kategori_id ?? '__default__';
+            if (!featuresByKategori[id]) featuresByKategori[id] = [];
+            featuresByKategori[id].push(simplifyFeature(feature, tolerance));
+        });
+
+        Object.entries(featuresByKategori).forEach(([id, features]) => {
+            const reg = petaLayers.groups[parseInt(id)];
+            if (!reg) return;
+            reg.layer.clearLayers();
+            if (features.length > 0)
+                reg.layer.addData({ type: 'FeatureCollection', features });
+        });
+
+        _defaultLayerLoaded = true;
+    } catch (err) {
+        console.warn('[peta-layers] fetchDefaultLayer error:', err);
+    }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function initPetaLayers() {
     initLayerGroups();
+
+    // ── Load default layer saat halaman pertama dimuat (low res, all bidang) ──
+    // Tunggu sedikit agar peta & viewport sudah stabil
+    setTimeout(() => fetchDefaultLayer(), 300);
+
+    // Hapus vertex saat peta digeser (vertex bisa tidak sinkron dengan posisi peta)
+    window.petaMap.on('movestart', () => clearVertices());
 
     window.petaMap.on("moveend zoomend", () => {
         clearTimeout(petaLayers._fetchTimer);

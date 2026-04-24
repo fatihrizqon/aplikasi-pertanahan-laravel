@@ -53,9 +53,11 @@ class PetaController extends Controller
         $jenisHakIds           = $request->input('jenis_hak_ids', []);
         $jenisHakAdatIds       = $request->input('jenis_hak_adat_ids', []);
         $statusKesesuaianIds   = $request->input('status_kesesuaian_ids', []);
+        $loadAll               = $request->boolean('all', false);
 
-        // Minimal salah satu filter layer aktif
+        // Minimal salah satu filter layer aktif, kecuali mode "all"
         if (
+            !$loadAll &&
             empty($kategoriIds) &&
             empty($penggunaanIds) &&
             empty($jenisHakIds) &&
@@ -123,29 +125,32 @@ class PetaController extends Controller
             ->whereNotNull('bidang.geom');
 
         // Filter layer: OR logic antar semua tipe yang aktif
-        $query->where(function ($q) use (
-            $kategoriIds,
-            $penggunaanIds,
-            $jenisHakIds,
-            $jenisHakAdatIds,
-            $statusKesesuaianIds
-        ) {
-            if (!empty($kategoriIds)) {
-                $q->orWhereIn('bidang.id_kategori', $kategoriIds);
-            }
-            if (!empty($penggunaanIds)) {
-                $q->orWhereIn('bidang.id_penggunaan', $penggunaanIds);
-            }
-            if (!empty($jenisHakIds)) {
-                $q->orWhereIn('bidang.id_jenis_hak', $jenisHakIds);
-            }
-            if (!empty($jenisHakAdatIds)) {
-                $q->orWhereIn('bidang.id_jenis_hak_adat', $jenisHakAdatIds);
-            }
-            if (!empty($statusKesesuaianIds)) {
-                $q->orWhereIn('bidang.id_status_kesesuaian', $statusKesesuaianIds);
-            }
-        });
+        // Dilewati jika mode "all" aktif (tidak ada filter layer wajib)
+        if (!$loadAll) {
+            $query->where(function ($q) use (
+                $kategoriIds,
+                $penggunaanIds,
+                $jenisHakIds,
+                $jenisHakAdatIds,
+                $statusKesesuaianIds
+            ) {
+                if (!empty($kategoriIds)) {
+                    $q->orWhereIn('bidang.id_kategori', $kategoriIds);
+                }
+                if (!empty($penggunaanIds)) {
+                    $q->orWhereIn('bidang.id_penggunaan', $penggunaanIds);
+                }
+                if (!empty($jenisHakIds)) {
+                    $q->orWhereIn('bidang.id_jenis_hak', $jenisHakIds);
+                }
+                if (!empty($jenisHakAdatIds)) {
+                    $q->orWhereIn('bidang.id_jenis_hak_adat', $jenisHakAdatIds);
+                }
+                if (!empty($statusKesesuaianIds)) {
+                    $q->orWhereIn('bidang.id_status_kesesuaian', $statusKesesuaianIds);
+                }
+            });
+        }
 
         // ── Filter wilayah ─────────────────────────────────────────────────
         // Skema baru: persil memiliki FK langsung ke kelurahan, kecamatan, kabupaten

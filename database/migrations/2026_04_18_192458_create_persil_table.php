@@ -18,8 +18,8 @@ return new class extends Migration
             $table->decimal('luas', 10, 2)->nullable();
             $table->string('alamat')->nullable();
             $table->foreignId('id_kelurahan')->references('id')->on('kelurahan');
-            $table->foreignId('id_kecamatan')->references('id')->on('kecamatan');
-            $table->foreignId('id_kabupaten')->references('id')->on('kabupaten');
+            $table->foreignId('id_kecamatan')->references('id')->on('kecamatan')->nullable();
+            $table->foreignId('id_kabupaten')->references('id')->on('kabupaten')->nullable();
             $table->string('batas_utara', 256)->nullable();
             $table->string('batas_selatan', 256)->nullable();
             $table->string('batas_timur', 256)->nullable();
@@ -27,8 +27,8 @@ return new class extends Migration
             $table->geometry('geom', 'multipolygon', 4326)->nullable();
             $table->string('koordinat')->nullable();
             $table->string('legacy_id', 64)->nullable()->unique();
-            $table->foreignId('created_by')->references('id')->on('users');
-            $table->foreignId('verified_by')->references('id')->on('users');
+            $table->foreignId('created_by')->references('id')->on('users')->nullable();
+            $table->foreignId('verified_by')->references('id')->on('users')->nullable();
             $table->timestamps();
         });
     }

@@ -33,10 +33,11 @@ BEGIN
             NULL::timestamp AS created_at,
             NULL::timestamp AS updated_at
         FROM dblink(
-            'host=localhost dbname=dev_pertanahan user=postgres password=password',
+            'host=127.0.0.1 port=5432 dbname=dev_pertanahan user=postgres password=password',
             'SELECT id, no_persil, luas, jalan, id_kelurahan,
                     batas_utara, batas_selatan, batas_timur, batas_barat, geom
              FROM persil
+             WHERE id > 0
              ORDER BY id ASC'
         ) AS p(
             id integer,
@@ -116,11 +117,11 @@ BEGIN
             NULLIF(b.id_jenis_uupa::text, '')::bigint AS id_jenis_hak,
             NULLIF(b.id_jenis_hak::text, '')::bigint AS id_jenis_hak_adat,
             (SELECT p.id_kategori
-             FROM dblink('host=localhost dbname=dev_pertanahan user=postgres password=password',
+             FROM dblink('host=127.0.0.1 port=5432 dbname=dev_pertanahan user=postgres password=password',
                 'SELECT id, id_kategori FROM persil') AS p(id integer, id_kategori bigint)
              WHERE p.id = NULLIF(b.id_persil::text, '')::integer) AS id_kategori,
             (SELECT p.id_kelurahan
-             FROM dblink('host=localhost dbname=dev_pertanahan user=postgres password=password',
+             FROM dblink('host=127.0.0.1 port=5432 dbname=dev_pertanahan user=postgres password=password',
                 'SELECT id, id_kelurahan FROM persil') AS p(id integer, id_kelurahan bigint)
              WHERE p.id = NULLIF(b.id_persil::text, '')::integer) AS id_kelurahan,
             NULLIF(b.id_status_kesesuaian::text, '')::bigint AS id_status_kesesuaian,
@@ -134,7 +135,7 @@ BEGIN
             NULLIF(b.id_file::text, '')::bigint AS id_file,
             b.keterangan
         FROM dblink(
-            'host=localhost dbname=dev_pertanahan user=postgres password=password',
+            'host=127.0.0.1 port=5432 dbname=dev_pertanahan user=postgres password=password',
             'SELECT id, id_persil, id_jenis_uupa, id_jenis_hak, id_status_kesesuaian,
                     id_pengelola, id_penggunaan, no_surat_uupa, no_kekancingan,
                     no_bidang, luas, geom, id_file, keterangan
