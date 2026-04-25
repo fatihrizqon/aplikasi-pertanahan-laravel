@@ -139,7 +139,9 @@ BEGIN
             'SELECT id, id_persil, id_jenis_uupa, id_jenis_hak, id_status_kesesuaian,
                     id_pengelola, id_penggunaan, no_surat_uupa, no_kekancingan,
                     no_bidang, luas, geom, id_file, keterangan
-             FROM bidang'
+             FROM bidang
+             WHERE id_persil > 0
+             ORDER BY id ASC'
         ) AS b(
             id integer,
             id_persil integer,

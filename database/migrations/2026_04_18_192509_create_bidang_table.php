@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::create('bidang', function (Blueprint $table) {
             $table->increments('id');
             $table->foreignId('id_persil')->references('id')->on('persil');
-            $table->foreignId('id_jenis_hak')->references('id')->on('jenis_hak');
-            $table->foreignId('id_jenis_hak_adat')->references('id')->on('jenis_hak_adat');
-            $table->foreignId('id_kategori')->references('id')->on('kategori');
-            $table->foreignId('id_status_kesesuaian')->references('id')->on('status_kesesuaian');
-            $table->foreignId('id_pengelola')->references('id')->on('pengelola')->nullable();
-            $table->foreignId('id_penggunaan')->references('id')->on('penggunaan')->nullable();
+            $table->foreignId('id_jenis_hak')->nullable()->references('id')->on('jenis_hak');
+            $table->foreignId('id_jenis_hak_adat')->nullable()->references('id')->on('jenis_hak_adat');
+            $table->foreignId('id_kategori')->nullable()->references('id')->on('kategori');
+            $table->foreignId('id_status_kesesuaian')->nullable()->references('id')->on('status_kesesuaian');
+            $table->foreignId('id_pengelola')->nullable()->references('id')->on('pengelola');
+            $table->foreignId('id_penggunaan')->nullable()->references('id')->on('penggunaan');
             $table->foreignId('id_kelurahan')->references('id')->on('kelurahan');
             $table->enum('pemilik', ['kasultanan', 'kadipaten'])->nullable();
             $table->string('nomor_hak')->nullable();
@@ -28,10 +28,10 @@ return new class extends Migration
             $table->decimal('luas', 10, 2)->nullable();
             $table->geometry('geom', 'multipolygon', 4326)->nullable();
             $table->string('koordinat')->nullable();
-            $table->foreignId('id_file')->references('id')->on('files')->nullable();
+            $table->foreignId('id_file')->nullable()->references('id')->on('files');
             $table->string('keterangan')->nullable();
-            $table->foreignId('created_by')->references('id')->on('users');
-            $table->foreignId('verified_by')->references('id')->on('users');
+            $table->foreignId('created_by')->nullable()->references('id')->on('users');
+            $table->foreignId('verified_by')->nullable()->references('id')->on('users');
             $table->timestamps();
         });
     }
