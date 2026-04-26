@@ -1,443 +1,332 @@
 /**
- * peta-layers.js  (OPTIMIZED v2 — Progressive Detail)
+ * peta-layers.js  (Vector Tiles edition — MapLibre GL JS)
  *
- * Strategi: fetch mulai dari zoom 9 (skala 1:546rb), tapi geometry disederhanakan
- * secara agresif di zoom jauh. Semakin dekat zoom, semakin detail polygon tampil.
+ * Arsitektur:
+ *   - Menggunakan endpoint MVT  /api/v1/tiles/bidang/{z}/{x}/{y}
+ *   - MapLibre menangani tile fetching, caching, dan WebGL rendering
+ *   - Server-side ST_SimplifyPreserveTopology sesuai zoom (lihat VectorTileController)
+ *   - Filter layer aktif dikirim sebagai query params pada tile URL
+ *   - Popup interaktif saat klik feature
  *
- * Zoom tiers:
- *   zoom  9–11  → tolerance 0.005  (sangat kasar, hanya outline besar)
- *   zoom 12–13  → tolerance 0.001  (kasar, bentuk umum terlihat)
- *   zoom 14–15  → tolerance 0.0002 (sedang, detail mulai terlihat)
- *   zoom 16+    → tolerance 0      (full detail, no simplification)
+ * Layer yang dikelola:
+ *   bidang-fill   – polygon fill per warna kategori/penggunaan/jenis-hak
+ *   bidang-line   – outline polygon bidang
+ *   bidang-vertex – titik vertex saat polygon diklik
  *
- * Optimasi aktif:
- *   1. CANVAS RENDERER     — satu <canvas>, bukan ribuan <path> SVG di DOM
- *   2. CLIENT SIMPLIFY     — koordinat polygon disederhanakan per zoom sebelum render
- *   3. BATCH addData       — satu addData() per layer, bukan per feature
- *   4. AbortController     — request lama di-cancel saat fetch baru dimulai
- *   5. DEBOUNCE 600ms      — dipertahankan
- *   6. ZOOM-AWARE REFETCH  — saat zoom berubah tier, re-render dengan tolerance baru
+ * Catatan kompatibilitas:
+ *   - window.petaLayers.wilayah dibaca oleh wilayah.js
+ *   - Event "wilayahChanged" ditrigger wilayah.js untuk memicu tile URL rebuild
  */
 
 "use strict";
 
-// ── Zoom tiers & tolerance ────────────────────────────────────────────────────
+// ── Konstanta ─────────────────────────────────────────────────────────────────
 
-const ZOOM_TIERS = [
-    { minZoom: 9,  maxZoom: 11, tolerance: 0.005  },
-    { minZoom: 12, maxZoom: 13, tolerance: 0.001  },
-    { minZoom: 14, maxZoom: 15, tolerance: 0.0002 },
-    { minZoom: 16, maxZoom: 99, tolerance: 0      },
-];
+const MIN_ZOOM_BIDANG = 10;  // harus sama dengan VectorTileController::MIN_ZOOM_BIDANG
 
-const MIN_ZOOM_BIDANG = 9; // mulai fetch dari zoom ini
+// ── State global ──────────────────────────────────────────────────────────────
 
-function getTolerance(zoom) {
-    const tier = ZOOM_TIERS.find((t) => zoom >= t.minZoom && zoom <= t.maxZoom);
-    return tier ? tier.tolerance : 0.005;
-}
-
-function getZoomTierIndex(zoom) {
-    return ZOOM_TIERS.findIndex((t) => zoom >= t.minZoom && zoom <= t.maxZoom);
-}
-
-// ── Canvas renderer bersama ───────────────────────────────────────────────────
-
-const _canvasRenderer = L.canvas({ padding: 0.5 });
-
-// ── Vertex layer group (singleton) ───────────────────────────────────────────
-// Menampilkan titik vertex saat bidang diklik; di-clear setiap klik baru.
-let _vertexLayerGroup = null;
-let _activeVertexBidangId = null;
-
-function getVertexLayerGroup() {
-    if (!_vertexLayerGroup && window.petaMap) {
-        _vertexLayerGroup = L.layerGroup().addTo(window.petaMap);
-    }
-    return _vertexLayerGroup;
-}
-
-function clearVertices() {
-    _vertexLayerGroup?.clearLayers();
-    _activeVertexBidangId = null;
-}
-
-function renderVertices(feature) {
-    const vlg = getVertexLayerGroup();
-    if (!vlg) return;
-    vlg.clearLayers();
-
-    const { type, coordinates } = feature.geometry;
-    const rings = type === 'Polygon'
-        ? coordinates
-        : coordinates.flat(); // MultiPolygon → flatten ke array ring
-
-    rings.forEach((ring) => {
-        ring.forEach(([lng, lat]) => {
-            L.circleMarker([lat, lng], {
-                radius: 3,
-                color: '#ffffff',
-                weight: 1.5,
-                fillColor: '#1d4ed8',
-                fillOpacity: 1,
-                interactive: false,
-            }).addTo(vlg);
-        });
-    });
-}
-
-// ── State ─────────────────────────────────────────────────────────────────────
-
-const petaLayers = {
-    groups: {},
-    penggunaanGroups: {},
-    jenisHakGroups: {},
-    jenisHakAdatGroups: {},
-    statusKesesuaianGroups: {},
-
+/**
+ * @type {{
+ *   wilayah: { kabupaten_kode: string|null, kecamatan_kode: string|null, kelurahan_kode: string|null },
+ *   opacity: { kategori: number, penggunaan: number, jenisHak: number, jenisHakAdat: number, statusKesesuaian: number },
+ *   activePopup: maplibregl.Popup|null,
+ *   vertexData: GeoJSON.FeatureCollection|null,
+ * }}
+ */
+window.petaLayers = window.petaLayers ?? {
     wilayah: {
         kabupaten_kode: null,
         kecamatan_kode: null,
         kelurahan_kode: null,
     },
-
-    // Raw GeoJSON cache per fetch-type — disimpan agar bisa re-simplify tanpa fetch ulang
-    _cache: {
-        kategori: null,       // { ids: [...], geojson: {...} }
-        penggunaan: null,
-        jenisHak: null,
-        jenisHakAdat: null,
-        statusKesesuaian: null,
+    opacity: {
+        kategori:          1,
+        penggunaan:        1,
+        jenisHak:          1,
+        jenisHakAdat:      1,
+        statusKesesuaian:  1,
     },
-
-    _fetchTimer: null,
-    _lastTierIndex: -1, // track tier sebelumnya untuk deteksi tier change
-
-    _abortControllers: {
-        kategori: null,
-        penggunaan: null,
-        jenisHak: null,
-        jenisHakAdat: null,
-        statusKesesuaian: null,
-    },
+    activePopup: null,
+    vertexData:  null,
 };
 
-// ── Geometry simplification (Ramer-Douglas-Peucker) ──────────────────────────
+// ── URL builder ───────────────────────────────────────────────────────────────
 
 /**
- * Simplifikasi satu ring koordinat dengan algoritma Ramer-Douglas-Peucker.
- * @param {number[][]} points  - array of [lng, lat]
- * @param {number}     tolerance
- * @returns {number[][]}
+ * Bangun tile URL dengan filter aktif sebagai query string.
+ * MapLibre menggunakan placeholder {z}/{x}/{y} dalam URL template.
  */
-function simplifyRing(points, tolerance) {
-    if (tolerance === 0 || points.length <= 4) return points;
+function buildTileUrl() {
+    const params = new URLSearchParams();
+    const w      = window.petaLayers.wilayah;
 
-    function perpendicularDist(p, a, b) {
-        const dx = b[0] - a[0], dy = b[1] - a[1];
-        if (dx === 0 && dy === 0) {
-            return Math.hypot(p[0] - a[0], p[1] - a[1]);
-        }
-        return Math.abs(dy * p[0] - dx * p[1] + b[0] * a[1] - b[1] * a[0]) /
-            Math.hypot(dx, dy);
+    // Filter wilayah
+    if (w.kelurahan_kode)      params.set("kelurahan_kode",  w.kelurahan_kode);
+    else if (w.kecamatan_kode) params.set("kecamatan_kode",  w.kecamatan_kode);
+    else if (w.kabupaten_kode) params.set("kabupaten_kode",  w.kabupaten_kode);
+
+    // Filter layer aktif
+    getKategoriAktif().forEach((id) => params.append("kategori_ids[]", id));
+    getPenggunaanAktif().forEach((id) => params.append("penggunaan_ids[]", id));
+    getJenisHakAktif().forEach((id) => params.append("jenis_hak_ids[]", id));
+    getJenisHakAdatAktif().forEach((id) => params.append("jenis_hak_adat_ids[]", id));
+    getStatusKesesuaianAktif().forEach((id) => params.append("status_kesesuaian_ids[]", id));
+
+    const hasFilter = [
+        ...getKategoriAktif(),
+        ...getPenggunaanAktif(),
+        ...getJenisHakAktif(),
+        ...getJenisHakAdatAktif(),
+        ...getStatusKesesuaianAktif(),
+    ].length > 0;
+
+    // Jika tidak ada filter layer aktif, muat semua bidang (mode "all")
+    if (!hasFilter) {
+        params.set("all", "1");
     }
 
-    function rdp(pts, start, end, tol, keep) {
-        if (end - start <= 1) return;
-        let maxDist = 0, maxIdx = start;
-        for (let i = start + 1; i < end; i++) {
-            const d = perpendicularDist(pts[i], pts[start], pts[end]);
-            if (d > maxDist) { maxDist = d; maxIdx = i; }
-        }
-        if (maxDist > tol) {
-            keep[maxIdx] = true;
-            rdp(pts, start, maxIdx, tol, keep);
-            rdp(pts, maxIdx, end, tol, keep);
-        }
+    const qs = params.toString();
+    return `${window.location.origin}/api/v1/tiles/bidang/{z}/{x}/{y}${qs ? "?" + qs : ""}`;
+}
+
+// ── Source & Layer management ─────────────────────────────────────────────────
+
+/**
+ * Inisialisasi atau perbarui source + layer bidang di MapLibre.
+ * Jika source sudah ada, hanya perbarui URL tile-nya.
+ */
+function setupBidangLayer(map) {
+    const tileUrl = buildTileUrl();
+
+    if (map.getSource("bidang-mvt")) {
+        // Update URL tiles (trigger re-fetch semua tile)
+        map.getSource("bidang-mvt").setTiles([tileUrl]);
+        return;
     }
 
-    const keep = new Array(points.length).fill(false);
-    keep[0] = true;
-    keep[points.length - 1] = true;
-    rdp(points, 0, points.length - 1, tolerance, keep);
+    // ── Source ──────────────────────────────────────────────────────────────
+    map.addSource("bidang-mvt", {
+        type: "vector",
+        tiles: [tileUrl],
+        minzoom: MIN_ZOOM_BIDANG,
+        maxzoom: 20,
+        // Jangan cache di browser terlalu lama — filter bisa berubah
+        // MVT tile disajikan dengan Cache-Control dari server
+    });
 
-    const result = points.filter((_, i) => keep[i]);
-    // Pastikan ring tertutup dan minimal 4 titik
-    if (result.length < 4) return points;
-    return result;
+    // ── Fill layer ──────────────────────────────────────────────────────────
+    map.addLayer({
+        id: "bidang-fill",
+        type: "fill",
+        source: "bidang-mvt",
+        "source-layer": "bidang",
+        minzoom: MIN_ZOOM_BIDANG,
+        paint: {
+            "fill-color": [
+                "coalesce",
+                ["get", "warna"],          // warna kategori
+                ["get", "penggunaan_warna"],
+                ["get", "jenis_hak_warna"],
+                ["get", "jenis_hak_adat_warna"],
+                ["get", "status_kesesuaian_warna"],
+                "#3b82f6",                  // default
+            ],
+            "fill-opacity": 0.35,
+        },
+    });
+
+    // ── Outline layer ────────────────────────────────────────────────────────
+    map.addLayer({
+        id: "bidang-line",
+        type: "line",
+        source: "bidang-mvt",
+        "source-layer": "bidang",
+        minzoom: MIN_ZOOM_BIDANG,
+        paint: {
+            "line-color": [
+                "coalesce",
+                ["get", "warna"],
+                ["get", "penggunaan_warna"],
+                ["get", "jenis_hak_warna"],
+                ["get", "jenis_hak_adat_warna"],
+                ["get", "status_kesesuaian_warna"],
+                "#3b82f6",
+            ],
+            "line-width": [
+                "interpolate", ["linear"], ["zoom"],
+                10, 0.5,
+                14, 1,
+                17, 1.5,
+            ],
+            "line-opacity": 0.8,
+        },
+    });
+
+    // ── Highlight layer (selected feature) ──────────────────────────────────
+    map.addLayer({
+        id: "bidang-highlight",
+        type: "line",
+        source: "bidang-mvt",
+        "source-layer": "bidang",
+        minzoom: MIN_ZOOM_BIDANG,
+        paint: {
+            "line-color": "#ffffff",
+            "line-width": 2.5,
+            "line-opacity": 0.9,
+        },
+        filter: ["==", ["get", "id"], ""],
+    });
+
+    // ── Vertex GeoJSON layer (titik pojok polygon terpilih) ──────────────────
+    if (!map.getSource("bidang-vertex")) {
+        map.addSource("bidang-vertex", {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] },
+        });
+    }
+
+    if (!map.getLayer("bidang-vertex-circle")) {
+        map.addLayer({
+            id: "bidang-vertex-circle",
+            type: "circle",
+            source: "bidang-vertex",
+            paint: {
+                "circle-radius": 3,
+                "circle-color": "#1d4ed8",
+                "circle-stroke-width": 1.5,
+                "circle-stroke-color": "#ffffff",
+            },
+        });
+    }
+
+    // ── Click handler ────────────────────────────────────────────────────────
+    map.on("click", "bidang-fill", onBidangClick);
+
+    // Cursor pointer saat hover di atas bidang
+    map.on("mouseenter", "bidang-fill", () => {
+        map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "bidang-fill", () => {
+        map.getCanvas().style.cursor = "";
+    });
 }
 
 /**
- * Simplifikasi satu GeoJSON feature (Polygon / MultiPolygon).
- * Feature lain dikembalikan apa adanya.
+ * Rebuild tile URL dan paksa MapLibre re-fetch semua tile.
+ * Dipanggil saat filter layer berubah atau wilayah berubah.
  */
-function simplifyFeature(feature, tolerance) {
-    if (tolerance === 0) return feature;
+function refreshTileSource() {
+    const map = window.petaMap;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const tileUrl = buildTileUrl();
+
+    if (map.getSource("bidang-mvt")) {
+        map.getSource("bidang-mvt").setTiles([tileUrl]);
+    } else {
+        setupBidangLayer(map);
+    }
+
+    updateCountLabel();
+}
+
+// ── Click & Popup ─────────────────────────────────────────────────────────────
+
+function onBidangClick(e) {
+    const map = window.petaMap;
+    if (!e.features || e.features.length === 0) return;
+
+    const feature = e.features[0];
+    const props   = feature.properties;
+
+    // Close popup sebelumnya
+    if (window.petaLayers.activePopup) {
+        window.petaLayers.activePopup.remove();
+        window.petaLayers.activePopup = null;
+    }
+
+    // Highlight feature terpilih
+    map.setFilter("bidang-highlight", ["==", ["get", "id"], props.id ?? ""]);
+
+    // Render vertex corners
+    renderVertexFromMvtFeature(feature);
+
+    // Buka popup
+    const popup = new maplibregl.Popup({ maxWidth: "240px", offset: 10 })
+        .setLngLat(e.lngLat)
+        .setHTML(buildPopupHtml(props))
+        .addTo(map);
+
+    popup.on("close", () => {
+        map.setFilter("bidang-highlight", ["==", ["get", "id"], ""]);
+        clearVertices();
+    });
+
+    window.petaLayers.activePopup = popup;
+}
+
+/**
+ * Render titik-titik vertex dari feature MVT (koordinat sudah dalam tile coords;
+ * MapLibre menyediakan geometry dalam coordinate space yang bisa kita gunakan
+ * via turf atau langsung dari e.features[0].geometry).
+ */
+function renderVertexFromMvtFeature(feature) {
+    const map = window.petaMap;
+    if (!map || !map.getSource("bidang-vertex")) return;
+
     const { type, coordinates } = feature.geometry;
+    const points = [];
+
+    const addRing = (ring) => {
+        ring.forEach(([lng, lat]) => {
+            points.push({
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [lng, lat] },
+                properties: {},
+            });
+        });
+    };
 
     if (type === "Polygon") {
-        return {
-            ...feature,
-            geometry: {
-                type,
-                coordinates: coordinates.map((ring) =>
-                    simplifyRing(ring, tolerance)
-                ),
-            },
-        };
+        coordinates.forEach(addRing);
+    } else if (type === "MultiPolygon") {
+        coordinates.forEach((poly) => poly.forEach(addRing));
     }
 
-    if (type === "MultiPolygon") {
-        return {
-            ...feature,
-            geometry: {
-                type,
-                coordinates: coordinates.map((poly) =>
-                    poly.map((ring) => simplifyRing(ring, tolerance))
-                ),
-            },
-        };
-    }
-
-    return feature;
+    map.getSource("bidang-vertex").setData({
+        type: "FeatureCollection",
+        features: points,
+    });
 }
 
-// ── Init layer groups ─────────────────────────────────────────────────────────
-
-function initLayerGroups() {
+function clearVertices() {
     const map = window.petaMap;
-    if (!map) return;
-
-    const makeLayer = (defaultColor) =>
-        L.geoJSON(null, {
-            renderer: _canvasRenderer,
-            style: (feature) => {
-                const warna = feature?.properties?._warna ?? defaultColor;
-                return {
-                    color: warna,
-                    fillColor: warna,
-                    fillOpacity: 0.25,
-                    weight: 1.5,
-                    opacity: 1,
-                };
-            },
-            onEachFeature(feature, lyr) {
-                const { id, no_bidang, no_persil, luas } = feature.properties ?? {};
-
-                // Bind popup keterangan (tidak hilang saat klik)
-                lyr.bindPopup(buildPopup(no_bidang, no_persil, luas), {
-                    maxWidth: 220,
-                });
-
-                // Tampilkan vertex saat bidang diklik, lalu buka popup
-                lyr.on('click', function (e) {
-                    // Toggle: klik bidang sama → sembunyikan vertex
-                    if (_activeVertexBidangId === id) {
-                        clearVertices();
-                    } else {
-                        _activeVertexBidangId = id;
-                        renderVertices(feature);
-                        lyr.openPopup(e.latlng);
-                    }
-                });
-            },
-        }).addTo(map);
-
-    document.querySelectorAll(".layer-kategori-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.kategoriId);
-        if (!id || petaLayers.groups[id]) return;
-        petaLayers.groups[id] = { layer: makeLayer("#3b82f6"), opacity: 1 };
-    });
-
-    document.querySelectorAll(".layer-penggunaan-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.penggunaanId);
-        if (!id || petaLayers.penggunaanGroups[id]) return;
-        petaLayers.penggunaanGroups[id] = { layer: makeLayer("#10b981"), opacity: 1 };
-    });
-
-    document.querySelectorAll(".layer-jenis-hak-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.jenisHakId);
-        if (!id || petaLayers.jenisHakGroups[id]) return;
-        petaLayers.jenisHakGroups[id] = { layer: makeLayer("#f59e0b"), opacity: 1 };
-    });
-
-    document.querySelectorAll(".layer-jenis-hak-adat-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.jenisHakAdatId);
-        if (!id || petaLayers.jenisHakAdatGroups[id]) return;
-        petaLayers.jenisHakAdatGroups[id] = { layer: makeLayer("#8b5cf6"), opacity: 1 };
-    });
-
-    document.querySelectorAll(".layer-status-kesesuaian-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.statusKesesuaianId);
-        if (!id || petaLayers.statusKesesuaianGroups[id]) return;
-        petaLayers.statusKesesuaianGroups[id] = { layer: makeLayer("#ef4444"), opacity: 1 };
-    });
+    if (!map || !map.getSource("bidang-vertex")) return;
+    map.getSource("bidang-vertex").setData({ type: "FeatureCollection", features: [] });
 }
 
-// ── Default layer load (saat halaman pertama dimuat, low res) ─────────────────
-// Fetch semua bidang dengan bbox current viewport + all=1, tanpa perlu
-// checkbox aktif. Hasilnya didistribusikan ke layer group masing-masing
-// berdasarkan warna kategori (default layer).
+function buildPopupHtml(props) {
+    const esc = (v) =>
+        String(v ?? "–")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
 
-let _defaultLayerLoaded = false;
+    const luas = props.luas
+        ? Number(props.luas).toLocaleString("id-ID") + " m²"
+        : null;
 
-async function fetchDefaultLayer() {
-    if (_defaultLayerLoaded) return;
-    if (!window.petaMap) return;
-
-    const zoom = window.petaMap.getZoom();
-    if (zoom < MIN_ZOOM_BIDANG) return;
-
-    const params = new URLSearchParams();
-    params.set('all', '1');
-    buildWilayahParams(params);
-
-    try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`);
-        if (!res.ok) return;
-        const geojson = await res.json();
-        if (!geojson.features?.length) return;
-
-        // Tag warna → gunakan warna kategori sebagai default
-        geojson.features.forEach((f) => {
-            f.properties._warna = f.properties.warna ?? '#3b82f6';
-        });
-
-        // Simpan ke cache kategori agar bisa di-rerender saat tier berubah
-        petaLayers._cache.kategori = { ids: [], geojson };
-
-        const tolerance = getTolerance(zoom);
-
-        // Distribusikan ke groups berdasarkan kategori_id jika sudah terdaftar,
-        // atau render semua ke layer sementara
-        const featuresByKategori = {};
-        geojson.features.forEach((feature) => {
-            const id = feature.properties.kategori_id ?? '__default__';
-            if (!featuresByKategori[id]) featuresByKategori[id] = [];
-            featuresByKategori[id].push(simplifyFeature(feature, tolerance));
-        });
-
-        Object.entries(featuresByKategori).forEach(([id, features]) => {
-            const reg = petaLayers.groups[parseInt(id)];
-            if (!reg) return;
-            reg.layer.clearLayers();
-            if (features.length > 0)
-                reg.layer.addData({ type: 'FeatureCollection', features });
-        });
-
-        _defaultLayerLoaded = true;
-    } catch (err) {
-        console.warn('[peta-layers] fetchDefaultLayer error:', err);
-    }
+    return `
+        <div style="min-width:160px; font-size:12px; line-height:1.7; font-family:inherit;">
+            <p style="font-weight:600; margin:0 0 4px; font-size:13px;">${esc(props.nomor_bidang)}</p>
+            <p style="color:#6b7280; margin:0;">Persil: ${esc(props.nomor_persil)}</p>
+            ${luas ? `<p style="color:#6b7280; margin:0;">Luas: ${esc(luas)}</p>` : ""}
+        </div>
+    `;
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-
-function initPetaLayers() {
-    initLayerGroups();
-
-    // ── Load default layer saat halaman pertama dimuat (low res, all bidang) ──
-    // Tunggu sedikit agar peta & viewport sudah stabil
-    setTimeout(() => fetchDefaultLayer(), 300);
-
-    // Hapus vertex saat peta digeser (vertex bisa tidak sinkron dengan posisi peta)
-    window.petaMap.on('movestart', () => clearVertices());
-
-    window.petaMap.on("moveend zoomend", () => {
-        clearTimeout(petaLayers._fetchTimer);
-        petaLayers._fetchTimer = setTimeout(() => {
-            const zoom = window.petaMap.getZoom();
-
-            if (zoom < MIN_ZOOM_BIDANG) {
-                clearAllBidangLayers();
-                return;
-            }
-
-            const currentTier = getZoomTierIndex(zoom);
-            const tierChanged = currentTier !== petaLayers._lastTierIndex;
-            petaLayers._lastTierIndex = currentTier;
-
-            const aktifKategori          = getKategoriAktif();
-            const aktifPenggunaan        = getPenggunaanAktif();
-            const aktifJenisHak          = getJenisHakAktif();
-            const aktifJenisHakAdat      = getJenisHakAdatAktif();
-            const aktifStatusKesesuaian  = getStatusKesesuaianAktif();
-
-            // Jika tier berubah dan ada cache → re-render dengan tolerance baru (tanpa fetch)
-            // Jika tidak ada cache atau bbox berubah → fetch ulang
-            if (aktifKategori.length > 0)
-                tierChanged && petaLayers._cache.kategori
-                    ? rerenderFromCache("kategori", petaLayers.groups, "kategori_id", "_warna")
-                    : fetchDanRenderBidang(aktifKategori);
-
-            if (aktifPenggunaan.length > 0)
-                tierChanged && petaLayers._cache.penggunaan
-                    ? rerenderFromCache("penggunaan", petaLayers.penggunaanGroups, "penggunaan_id", "_warna")
-                    : fetchDanRenderBidangPenggunaan(aktifPenggunaan);
-
-            if (aktifJenisHak.length > 0)
-                tierChanged && petaLayers._cache.jenisHak
-                    ? rerenderFromCache("jenisHak", petaLayers.jenisHakGroups, "jenis_hak_id", "_warna")
-                    : fetchDanRenderBidangJenisHak(aktifJenisHak);
-
-            if (aktifJenisHakAdat.length > 0)
-                tierChanged && petaLayers._cache.jenisHakAdat
-                    ? rerenderFromCache("jenisHakAdat", petaLayers.jenisHakAdatGroups, "jenis_hak_adat_id", "_warna")
-                    : fetchDanRenderBidangJenisHakAdat(aktifJenisHakAdat);
-
-            if (aktifStatusKesesuaian.length > 0)
-                tierChanged && petaLayers._cache.statusKesesuaian
-                    ? rerenderFromCache("statusKesesuaian", petaLayers.statusKesesuaianGroups, "status_kesesuaian_id", "_warna")
-                    : fetchDanRenderBidangStatusKesesuaian(aktifStatusKesesuaian);
-
-        }, 600);
-    });
-}
-
-// ── Re-render dari cache (tier change, tanpa fetch) ───────────────────────────
-
-function rerenderFromCache(cacheKey, registryMap, idProp, warnaProp) {
-    const cached = petaLayers._cache[cacheKey];
-    if (!cached) return;
-
-    const zoom = window.petaMap.getZoom();
-    const tolerance = getTolerance(zoom);
-
-    // Kelompokkan features per id
-    const featuresByGroup = {};
-    cached.geojson.features?.forEach((feature) => {
-        const id = feature.properties[idProp];
-        if (!featuresByGroup[id]) featuresByGroup[id] = [];
-        featuresByGroup[id].push(simplifyFeature(feature, tolerance));
-    });
-
-    Object.entries(featuresByGroup).forEach(([id, features]) => {
-        const reg = registryMap[parseInt(id)];
-        if (!reg) return;
-        reg.layer.clearLayers();
-        if (features.length > 0)
-            reg.layer.addData({ type: "FeatureCollection", features });
-    });
-}
-
-// ── Clear all ─────────────────────────────────────────────────────────────────
-
-function clearAllBidangLayers() {
-    const clearReg = (registry) => {
-        Object.values(registry).forEach((r) => r?.layer?.clearLayers?.());
-    };
-    clearReg(petaLayers.groups);
-    clearReg(petaLayers.penggunaanGroups);
-    clearReg(petaLayers.jenisHakGroups);
-    clearReg(petaLayers.jenisHakAdatGroups);
-    clearReg(petaLayers.statusKesesuaianGroups);
-
-    document.querySelectorAll(".bidang-count").forEach((el) => {
-        el.textContent = "Perbesar peta untuk memuat bidang";
-    });
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helper: filter aktif ──────────────────────────────────────────────────────
 
 function getKategoriAktif() {
     return [...document.querySelectorAll(".layer-kategori-cb:checked")]
@@ -460,341 +349,29 @@ function getStatusKesesuaianAktif() {
         .map((cb) => parseInt(cb.dataset.statusKesesuaianId)).filter(Boolean);
 }
 
-function getBboxString() {
-    if (!window.petaMap) return null;
-    const b = window.petaMap.getBounds();
-    return [b.getWest().toFixed(6), b.getSouth().toFixed(6),
-            b.getEast().toFixed(6), b.getNorth().toFixed(6)].join(",");
-}
+// ── Helper: count label ───────────────────────────────────────────────────────
 
-function buildWilayahParams(params) {
-    const { kabupaten_kode, kecamatan_kode, kelurahan_kode } = petaLayers.wilayah;
-    if (kelurahan_kode)       params.set("kelurahan_kode", kelurahan_kode);
-    else if (kecamatan_kode)  params.set("kecamatan_kode", kecamatan_kode);
-    else if (kabupaten_kode)  params.set("kabupaten_kode", kabupaten_kode);
-    else { const bbox = getBboxString(); if (bbox) params.set("bbox", bbox); }
-}
-
-function setLayerCountLabel(kategoriId, count) {
-    const groupEl = document.querySelector(`[data-group-id="kategori-${kategoriId}"]`);
-    if (!groupEl) return;
-    const label = groupEl.querySelector(".bidang-count");
-    if (label) label.textContent = `${count.toLocaleString("id-ID")} bidang dimuat`;
-}
-
-function setLoadingState(kategoriIds, loading) {
-    kategoriIds.forEach((id) => {
-        const groupEl = document.querySelector(`[data-group-id="kategori-${id}"]`);
-        if (!groupEl) return;
-        const label = groupEl.querySelector(".bidang-count");
-        if (label && loading) label.textContent = "Memuat\u2026";
+function updateCountLabel(message) {
+    document.querySelectorAll(".bidang-count").forEach((el) => {
+        el.textContent = message ?? "Memuat bidang…";
     });
 }
+
+// ── Helper: group checkbox state ──────────────────────────────────────────────
 
 function updateGroupCheckboxState(groupCbId, cbSelector) {
     const groupCb = document.getElementById(groupCbId);
     if (!groupCb) return;
     const total   = document.querySelectorAll(cbSelector).length;
     const checked = document.querySelectorAll(`${cbSelector}:checked`).length;
-    if (checked === 0)          { groupCb.checked = false; groupCb.indeterminate = false; }
-    else if (checked === total) { groupCb.checked = true;  groupCb.indeterminate = false; }
-    else                        { groupCb.checked = false; groupCb.indeterminate = true;  }
+    if (checked === 0)         { groupCb.checked = false; groupCb.indeterminate = false; }
+    else if (checked === total){ groupCb.checked = true;  groupCb.indeterminate = false; }
+    else                       { groupCb.checked = false; groupCb.indeterminate = true;  }
 }
 
-function freshAbortController(key) {
-    petaLayers._abortControllers[key]?.abort();
-    const ctrl = new AbortController();
-    petaLayers._abortControllers[key] = ctrl;
-    return ctrl;
-}
+// ── Event handlers (dipanggil dari blade/HTML) ────────────────────────────────
 
-function isZoomCukup() {
-    return window.petaMap && window.petaMap.getZoom() >= MIN_ZOOM_BIDANG;
-}
-
-// ── Render helper (dipakai semua fetch functions) ─────────────────────────────
-
-/**
- * Distribute GeoJSON features ke registry map masing-masing,
- * simplifikasi per zoom, lalu addData sekaligus.
- */
-function distributeFeatures(geojson, registryMap, idProp) {
-    const zoom      = window.petaMap.getZoom();
-    const tolerance = getTolerance(zoom);
-
-    const featuresByGroup = {};
-    geojson.features?.forEach((feature) => {
-        const id = feature.properties[idProp];
-        if (!featuresByGroup[id]) featuresByGroup[id] = [];
-        featuresByGroup[id].push(simplifyFeature(feature, tolerance));
-    });
-
-    let totalCount = 0;
-    Object.entries(featuresByGroup).forEach(([id, features]) => {
-        const reg = registryMap[parseInt(id)];
-        if (!reg) return;
-        reg.layer.clearLayers();
-        if (features.length > 0)
-            reg.layer.addData({ type: "FeatureCollection", features });
-        totalCount += features.length;
-    });
-
-    return { featuresByGroup, totalCount };
-}
-
-// ── Fetch & Render: Kategori ──────────────────────────────────────────────────
-
-async function fetchDanRenderBidang(kategoriIds) {
-    if (!kategoriIds.length) return;
-
-    const ctrl = freshAbortController("kategori");
-    kategoriIds.forEach((id) => petaLayers.groups[id]?.layer.clearLayers());
-    setLoadingState(kategoriIds, true);
-
-    const params = new URLSearchParams();
-    kategoriIds.forEach((id) => params.append("kategori_ids[]", id));
-    buildWilayahParams(params);
-
-    try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, { signal: ctrl.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const geojson = await res.json();
-
-        // Tag warna ke properti _warna agar style() bisa mengaksesnya
-        geojson.features?.forEach((f) => {
-            f.properties._warna = f.properties.warna ?? "#3b82f6";
-        });
-
-        // Simpan cache raw (sebelum simplifikasi)
-        petaLayers._cache.kategori = { ids: kategoriIds, geojson };
-
-        const counts = {};
-        kategoriIds.forEach((id) => { counts[id] = 0; });
-
-        const featuresByKategori = {};
-        const zoom      = window.petaMap.getZoom();
-        const tolerance = getTolerance(zoom);
-
-        geojson.features?.forEach((feature) => {
-            const id = feature.properties.kategori_id;
-            if (!featuresByKategori[id]) featuresByKategori[id] = [];
-            featuresByKategori[id].push(simplifyFeature(feature, tolerance));
-        });
-
-        kategoriIds.forEach((id) => {
-            const reg = petaLayers.groups[id];
-            if (!reg) return;
-            const features = featuresByKategori[id] ?? [];
-            if (features.length > 0)
-                reg.layer.addData({ type: "FeatureCollection", features });
-            counts[id] = features.length;
-            setLayerCountLabel(id, counts[id]);
-        });
-    } catch (err) {
-        if (err.name === "AbortError") return;
-        console.error("[peta-layers] fetchDanRenderBidang error:", err);
-        kategoriIds.forEach((id) => {
-            const label = document.querySelector(`[data-group-id="kategori-${id}"] .bidang-count`);
-            if (label) label.textContent = "Gagal memuat data.";
-        });
-    }
-}
-
-// ── Fetch & Render: Penggunaan ────────────────────────────────────────────────
-
-async function fetchDanRenderBidangPenggunaan(penggunaanIds) {
-    if (!penggunaanIds.length) return;
-
-    const ctrl = freshAbortController("penggunaan");
-    penggunaanIds.forEach((id) => petaLayers.penggunaanGroups[id]?.layer.clearLayers());
-
-    const params = new URLSearchParams();
-    penggunaanIds.forEach((id) => params.append("penggunaan_ids[]", id));
-    buildWilayahParams(params);
-
-    try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, { signal: ctrl.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const geojson = await res.json();
-
-        geojson.features?.forEach((f) => {
-            f.properties._warna = f.properties.penggunaan_warna ?? "#10b981";
-        });
-        petaLayers._cache.penggunaan = { ids: penggunaanIds, geojson };
-
-        const zoom = window.petaMap.getZoom();
-        const tolerance = getTolerance(zoom);
-        const featuresByPenggunaan = {};
-
-        geojson.features?.forEach((feature) => {
-            const id = feature.properties.penggunaan_id;
-            if (!featuresByPenggunaan[id]) featuresByPenggunaan[id] = [];
-            featuresByPenggunaan[id].push(simplifyFeature(feature, tolerance));
-        });
-
-        penggunaanIds.forEach((id) => {
-            const reg = petaLayers.penggunaanGroups[id];
-            if (!reg) return;
-            const features = featuresByPenggunaan[id] ?? [];
-            if (features.length > 0)
-                reg.layer.addData({ type: "FeatureCollection", features });
-        });
-    } catch (err) {
-        if (err.name === "AbortError") return;
-        console.error("[peta-layers] fetchDanRenderBidangPenggunaan error:", err);
-    }
-}
-
-// ── Fetch & Render: Jenis Hak ─────────────────────────────────────────────────
-
-async function fetchDanRenderBidangJenisHak(jenisHakIds) {
-    if (!jenisHakIds.length) return;
-
-    const ctrl = freshAbortController("jenisHak");
-    jenisHakIds.forEach((id) => petaLayers.jenisHakGroups[id]?.layer.clearLayers());
-
-    const params = new URLSearchParams();
-    jenisHakIds.forEach((id) => params.append("jenis_hak_ids[]", id));
-    buildWilayahParams(params);
-
-    try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, { signal: ctrl.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const geojson = await res.json();
-
-        geojson.features?.forEach((f) => {
-            f.properties._warna = f.properties.jenis_hak_warna ?? "#f59e0b";
-        });
-        petaLayers._cache.jenisHak = { ids: jenisHakIds, geojson };
-
-        const zoom = window.petaMap.getZoom();
-        const tolerance = getTolerance(zoom);
-        const featuresByJenisHak = {};
-
-        geojson.features?.forEach((feature) => {
-            const id = feature.properties.jenis_hak_id;
-            if (!featuresByJenisHak[id]) featuresByJenisHak[id] = [];
-            featuresByJenisHak[id].push(simplifyFeature(feature, tolerance));
-        });
-
-        jenisHakIds.forEach((id) => {
-            const reg = petaLayers.jenisHakGroups[id];
-            if (!reg) return;
-            const features = featuresByJenisHak[id] ?? [];
-            if (features.length > 0)
-                reg.layer.addData({ type: "FeatureCollection", features });
-        });
-    } catch (err) {
-        if (err.name === "AbortError") return;
-        console.error("[peta-layers] fetchDanRenderBidangJenisHak error:", err);
-    }
-}
-
-// ── Fetch & Render: Jenis Hak Adat ───────────────────────────────────────────
-
-async function fetchDanRenderBidangJenisHakAdat(jenisHakAdatIds) {
-    if (!jenisHakAdatIds.length) return;
-
-    const ctrl = freshAbortController("jenisHakAdat");
-    jenisHakAdatIds.forEach((id) => petaLayers.jenisHakAdatGroups[id]?.layer.clearLayers());
-
-    const params = new URLSearchParams();
-    jenisHakAdatIds.forEach((id) => params.append("jenis_hak_adat_ids[]", id));
-    buildWilayahParams(params);
-
-    try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, { signal: ctrl.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const geojson = await res.json();
-
-        geojson.features?.forEach((f) => {
-            f.properties._warna = f.properties.jenis_hak_adat_warna ?? "#8b5cf6";
-        });
-        petaLayers._cache.jenisHakAdat = { ids: jenisHakAdatIds, geojson };
-
-        const zoom = window.petaMap.getZoom();
-        const tolerance = getTolerance(zoom);
-        const featuresByJenisHakAdat = {};
-
-        geojson.features?.forEach((feature) => {
-            const id = feature.properties.jenis_hak_adat_id;
-            if (!featuresByJenisHakAdat[id]) featuresByJenisHakAdat[id] = [];
-            featuresByJenisHakAdat[id].push(simplifyFeature(feature, tolerance));
-        });
-
-        jenisHakAdatIds.forEach((id) => {
-            const reg = petaLayers.jenisHakAdatGroups[id];
-            if (!reg) return;
-            const features = featuresByJenisHakAdat[id] ?? [];
-            if (features.length > 0)
-                reg.layer.addData({ type: "FeatureCollection", features });
-        });
-    } catch (err) {
-        if (err.name === "AbortError") return;
-        console.error("[peta-layers] fetchDanRenderBidangJenisHakAdat error:", err);
-    }
-}
-
-// ── Fetch & Render: Status Kesesuaian ────────────────────────────────────────
-
-async function fetchDanRenderBidangStatusKesesuaian(statusKesesuaianIds) {
-    if (!statusKesesuaianIds.length) return;
-
-    const ctrl = freshAbortController("statusKesesuaian");
-    statusKesesuaianIds.forEach((id) => petaLayers.statusKesesuaianGroups[id]?.layer.clearLayers());
-
-    const params = new URLSearchParams();
-    statusKesesuaianIds.forEach((id) => params.append("status_kesesuaian_ids[]", id));
-    buildWilayahParams(params);
-
-    try {
-        const res = await fetch(`/api/v1/peta/bidang?${params.toString()}`, { signal: ctrl.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const geojson = await res.json();
-
-        geojson.features?.forEach((f) => {
-            f.properties._warna = f.properties.status_kesesuaian_warna ?? "#ef4444";
-        });
-        petaLayers._cache.statusKesesuaian = { ids: statusKesesuaianIds, geojson };
-
-        const zoom = window.petaMap.getZoom();
-        const tolerance = getTolerance(zoom);
-        const featuresByStatus = {};
-
-        geojson.features?.forEach((feature) => {
-            const id = feature.properties.status_kesesuaian_id;
-            if (!featuresByStatus[id]) featuresByStatus[id] = [];
-            featuresByStatus[id].push(simplifyFeature(feature, tolerance));
-        });
-
-        statusKesesuaianIds.forEach((id) => {
-            const reg = petaLayers.statusKesesuaianGroups[id];
-            if (!reg) return;
-            const features = featuresByStatus[id] ?? [];
-            if (features.length > 0)
-                reg.layer.addData({ type: "FeatureCollection", features });
-        });
-    } catch (err) {
-        if (err.name === "AbortError") return;
-        console.error("[peta-layers] fetchDanRenderBidangStatusKesesuaian error:", err);
-    }
-}
-
-// ── Popup builder ─────────────────────────────────────────────────────────────
-
-function buildPopup(no_bidang, no_persil, luas) {
-    return `
-        <div style="min-width:160px; font-size:12px; line-height:1.6;">
-            <p style="font-weight:600; margin:0 0 4px;">${escHtml(no_bidang ?? "-")}</p>
-            <p style="color:#6b7280; margin:0;">Persil: ${escHtml(no_persil ?? "-")}</p>
-            ${luas ? `<p style="color:#6b7280; margin:0;">Luas: ${Number(luas).toLocaleString("id-ID")} m\u00B2</p>` : ""}
-        </div>
-    `;
-}
-
-// ── Event handlers ────────────────────────────────────────────────────────────
-
-function onGroupChange(groupCb, groupName) {
+window.onGroupChange = function (groupCb, groupName) {
     const isChecked = groupCb.checked;
     const map = {
         "kategori":           [".layer-kategori-cb",           onKategoriChange],
@@ -807,127 +384,102 @@ function onGroupChange(groupCb, groupName) {
     if (!entry) return;
     document.querySelectorAll(entry[0]).forEach((cb) => { cb.checked = isChecked; });
     entry[1]();
-}
+};
 
-function onKategoriChange() {
-    const aktif = getKategoriAktif();
-    document.querySelectorAll(".layer-kategori-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.kategoriId);
-        if (!id) return;
-        if (!cb.checked) { petaLayers.groups[id]?.layer.clearLayers(); }
-    });
+window.onKategoriChange = function () {
     updateGroupCheckboxState("cb-group-kategori", ".layer-kategori-cb");
-    if (aktif.length > 0 && isZoomCukup()) fetchDanRenderBidang(aktif);
-}
+    refreshTileSource();
+};
+function onKategoriChange() { window.onKategoriChange(); }
 
-function onPenggunaanChange() {
-    const aktif = getPenggunaanAktif();
-    document.querySelectorAll(".layer-penggunaan-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.penggunaanId);
-        if (!id) return;
-        if (!cb.checked) petaLayers.penggunaanGroups[id]?.layer.clearLayers();
-    });
+window.onPenggunaanChange = function () {
     updateGroupCheckboxState("cb-group-penggunaan", ".layer-penggunaan-cb");
-    if (aktif.length > 0 && isZoomCukup()) fetchDanRenderBidangPenggunaan(aktif);
-}
+    refreshTileSource();
+};
+function onPenggunaanChange() { window.onPenggunaanChange(); }
 
-function onJenisHakChange() {
-    const aktif = getJenisHakAktif();
-    document.querySelectorAll(".layer-jenis-hak-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.jenisHakId);
-        if (!id) return;
-        if (!cb.checked) petaLayers.jenisHakGroups[id]?.layer.clearLayers();
-    });
+window.onJenisHakChange = function () {
     updateGroupCheckboxState("cb-group-jenis-hak", ".layer-jenis-hak-cb");
-    if (aktif.length > 0 && isZoomCukup()) fetchDanRenderBidangJenisHak(aktif);
-}
+    refreshTileSource();
+};
+function onJenisHakChange() { window.onJenisHakChange(); }
 
-function onJenisHakAdatChange() {
-    const aktif = getJenisHakAdatAktif();
-    document.querySelectorAll(".layer-jenis-hak-adat-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.jenisHakAdatId);
-        if (!id) return;
-        if (!cb.checked) petaLayers.jenisHakAdatGroups[id]?.layer.clearLayers();
-    });
+window.onJenisHakAdatChange = function () {
     updateGroupCheckboxState("cb-group-jenis-hak-adat", ".layer-jenis-hak-adat-cb");
-    if (aktif.length > 0 && isZoomCukup()) fetchDanRenderBidangJenisHakAdat(aktif);
-}
+    refreshTileSource();
+};
+function onJenisHakAdatChange() { window.onJenisHakAdatChange(); }
 
-function onStatusKesesuaianChange() {
-    const aktif = getStatusKesesuaianAktif();
-    document.querySelectorAll(".layer-status-kesesuaian-cb").forEach((cb) => {
-        const id = parseInt(cb.dataset.statusKesesuaianId);
-        if (!id) return;
-        if (!cb.checked) petaLayers.statusKesesuaianGroups[id]?.layer.clearLayers();
-    });
+window.onStatusKesesuaianChange = function () {
     updateGroupCheckboxState("cb-group-status-kesesuaian", ".layer-status-kesesuaian-cb");
-    if (aktif.length > 0 && isZoomCukup()) fetchDanRenderBidangStatusKesesuaian(aktif);
-}
+    refreshTileSource();
+};
+function onStatusKesesuaianChange() { window.onStatusKesesuaianChange(); }
 
 // ── Opacity ───────────────────────────────────────────────────────────────────
 
-function updateOpacity(rangeEl, groupId) {
-    const val = rangeEl.value / 100;
+window.updateOpacity = function (rangeEl, groupId) {
+    const val    = rangeEl.value / 100;
+    const label  = rangeEl.closest(".flex.items-center.gap-2")?.querySelector(".opacity-val");
+    if (label) label.textContent = `${rangeEl.value}%`;
 
-    const opacityLabel = rangeEl.closest(".flex.items-center.gap-2")?.querySelector(".opacity-val");
-    if (opacityLabel) opacityLabel.textContent = `${rangeEl.value}%`;
+    const map = window.petaMap;
+    if (!map) return;
 
-    const applyOpacity = (registryMap, ids) => {
-        ids.forEach((id) => {
-            const r = registryMap[id];
-            if (!r) return;
-            r.opacity = val;
-            r.layer.setStyle({ fillOpacity: 0.25 * val, opacity: val });
-        });
+    // Mapping groupId → layer opacity key
+    const opacityKeyMap = {
+        "group-kategori":          "kategori",
+        "group-penggunaan":        "penggunaan",
+        "group-jenis-hak":         "jenisHak",
+        "group-jenis-hak-adat":    "jenisHakAdat",
+        "group-status-kesesuaian": "statusKesesuaian",
     };
 
-    const opacityMap = {
-        "group-kategori":          [petaLayers.groups,                    getKategoriAktif],
-        "group-penggunaan":        [petaLayers.penggunaanGroups,          getPenggunaanAktif],
-        "group-jenis-hak":         [petaLayers.jenisHakGroups,            getJenisHakAktif],
-        "group-jenis-hak-adat":    [petaLayers.jenisHakAdatGroups,        getJenisHakAdatAktif],
-        "group-status-kesesuaian": [petaLayers.statusKesesuaianGroups,    getStatusKesesuaianAktif],
-    };
-
-    if (opacityMap[groupId]) {
-        const [reg, getter] = opacityMap[groupId];
-        applyOpacity(reg, getter());
-        return;
+    const key = opacityKeyMap[groupId];
+    if (key) {
+        window.petaLayers.opacity[key] = val;
     }
 
-    // Fallback: individual kategori layer
-    const id = parseInt(groupId.replace("kategori-", ""));
-    const reg = petaLayers.groups[id];
-    if (!reg) return;
-    reg.opacity = val;
-    reg.layer.setStyle({ fillOpacity: 0.25 * val, opacity: val });
-}
+    // Hitung opacity efektif sebagai rata-rata minimum (paling restriktif menang)
+    const minOpacity = Math.min(...Object.values(window.petaLayers.opacity));
 
-// ── Toggle group chevron ──────────────────────────────────────────────────────
+    if (map.getLayer("bidang-fill")) {
+        map.setPaintProperty("bidang-fill", "fill-opacity",  0.35 * minOpacity);
+    }
+    if (map.getLayer("bidang-line")) {
+        map.setPaintProperty("bidang-line", "line-opacity",  0.8  * minOpacity);
+    }
+};
 
-function toggleGroup(headerEl) {
-    const groupEl  = headerEl.closest(".layer-group");
-    const children = groupEl?.querySelector(".layer-children");
-    const chevron  = headerEl.querySelector(".chevron");
-    if (!children) return;
-    const isOpen = !children.classList.contains("hidden");
-    children.classList.toggle("hidden", isOpen);
-    chevron?.classList.toggle("rotate-90", !isOpen);
-}
+// ── Wilayah changed event (dari wilayah.js) ───────────────────────────────────
 
-// ── Escape helpers ────────────────────────────────────────────────────────────
+window.addEventListener("wilayahChanged", () => {
+    refreshTileSource();
+});
 
-function escHtml(str) {
-    return String(str ?? "")
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+// ── Basemap changed → re-setup layers ────────────────────────────────────────
 
-function escAttr(str) {
-    return String(str ?? "").replace(/"/g, "&quot;");
-}
+window.addEventListener("basemapChanged", () => {
+    const map = window.petaMap;
+    if (!map) return;
+    map.once("styledata", () => {
+        setupBidangLayer(map);
+        // wilayah-highlight direset oleh wilayah.js
+    });
+});
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
+
+function initPetaLayers() {
+    const map = window.petaMap;
+    if (!map) return;
+
+    if (map.isStyleLoaded()) {
+        setupBidangLayer(map);
+    } else {
+        map.once("load", () => setupBidangLayer(map));
+    }
+}
 
 if (window.petaMap) {
     initPetaLayers();

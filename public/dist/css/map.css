@@ -1,30 +1,16 @@
-#peta-sidebar [role="tab"].active {
-    color: #dc2626;
-    border-color: #dc2626;
-}
+/* ════════════════════════════════════════
+   map.css  (MapLibre GL JS edition)
+════════════════════════════════════════ */
 
-.dark #peta-sidebar [role="tab"].active {
-    color: #f87171;
-    border-color: #f87171;
-}
-
-.leaflet-control-zoom {
-    display: none !important;
-}
-
-.leaflet-control-attribution {
-    font-size: 9px !important;
-}
-
+/* ── Layout ── */
 html,
 body {
     overflow: hidden !important;
     height: 100% !important;
 }
 
-#map {
-    width: 100% !important;
-    height: 100% !important;
+#peta-wrapper {
+    display: flex !important;
 }
 
 #peta-sidebar {
@@ -45,6 +31,80 @@ body {
     border-radius: 2px;
 }
 
+/* ── Map container ── */
+#map {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: #1a1a2e;
+}
+
+/* ── MapLibre attribution ── */
+.maplibregl-ctrl-attrib {
+    font-size: 9px !important;
+}
+
+/* Hide default MapLibre zoom controls (kita pakai tombol custom) */
+.maplibregl-ctrl-zoom-in,
+.maplibregl-ctrl-zoom-out,
+.maplibregl-ctrl-group {
+    display: none !important;
+}
+
+/* ── MapLibre popup ── */
+.maplibregl-popup-content {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: inherit;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    min-width: 160px;
+}
+
+.dark .maplibregl-popup-content {
+    background: #1f2937;
+    color: #f9fafb;
+}
+
+.maplibregl-popup-close-button {
+    font-size: 16px;
+    color: #9ca3af;
+    padding: 2px 6px;
+}
+
+.maplibregl-popup-close-button:hover {
+    color: #374151;
+    background: transparent;
+}
+
+.dark .maplibregl-popup-close-button:hover {
+    color: #d1d5db;
+}
+
+/* ── Basemap switcher ── */
+.basemap-btn {
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.basemap-btn.active {
+    background: #dc2626 !important;
+    color: #fff !important;
+    border-color: #dc2626 !important;
+}
+
+/* ── Sidebar tab active state ── */
+#peta-sidebar [role="tab"].active {
+    color: #dc2626;
+    border-color: #dc2626;
+}
+
+.dark #peta-sidebar [role="tab"].active {
+    color: #f87171;
+    border-color: #f87171;
+}
+
+/* ── Range input (opacity slider) ── */
 input[type=range] {
     -webkit-appearance: none;
     appearance: none;
@@ -73,32 +133,12 @@ input[type=range]::-moz-range-thumb {
     border: none;
 }
 
-#peta-wrapper {
-    display: flex !important;
+/* ── Loading indicator tile ── */
+.maplibregl-canvas {
+    cursor: default;
 }
 
-#peta-wrapper #peta-sidebar {
-    transform: none !important;
-    transition: none !important;
-    position: relative !important;
-    width: 260px !important;
-    flex-shrink: 0 !important;
-}
-
-#map {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: #1a1a2e;
-}
-
-.basemap-btn {
-    transition: background .15s, color .15s, border-color .15s;
-}
-
-.basemap-btn.active {
-    background: #dc2626 !important;
-    color: #fff !important;
-    border-color: #dc2626 !important;
+/* Canvas cursor pointer saat hover polygon */
+.maplibregl-canvas.bidang-hover {
+    cursor: pointer !important;
 }

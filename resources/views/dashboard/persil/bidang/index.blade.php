@@ -1,7 +1,7 @@
 @php
 $indexHref = route('persil.bidang.index', request()->route('persil'));
 #$createHref = route('persil.bidang.create');
-#$updateHref = fn ($model) => route('persil.bidang.edit', $model->id);
+$updateHref = fn ($model) => route('persil.bidang.edit', $model->id);
 #$deleteHref = fn ($model) => route('persil.bidang.destroy', $model->id);
 
 $page_title = "Bidang Persil";
@@ -68,7 +68,7 @@ $page_subtitle = "Kelola data bidang.";
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
                                         @can(['update_user','activate_user','delete_user'])
                                         <div class="grid lg:flex gap-1">
-                                            <a href="#!" onclick="modalFormAjax(this,event)" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-blue-500 dark:hover:text-blue-400">
+                                            <a href="{{ $updateHref($model) }}" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-blue-500 dark:hover:text-blue-400">
                                                 <i data-lucide="settings-2" class="w-4 h-4"></i>
                                             </a>
 

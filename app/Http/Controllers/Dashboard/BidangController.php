@@ -4,6 +4,12 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bidang;
+use App\Models\JenisHak;
+use App\Models\JenisHakAdat;
+use App\Models\Kategori;
+use App\Models\Pengelola;
+use App\Models\PenggunaanRDTR;
+use App\Models\StatusKesesuaian;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -45,8 +51,16 @@ class BidangController extends Controller
     public function form(string $id = null)
     {
         $model = empty($id) ? new Bidang : $this->findModel(['id' => $id]);
+        $data['options'] = [
+            'jenis_hak' => JenisHak::get()->pluck('nama', 'id'),
+            'jenis_hak_adat' => JenisHakAdat::get()->pluck('nama', 'id'),
+            'kategori' => Kategori::get()->pluck('nama', 'id'),
+            'status_kesesuaian' => StatusKesesuaian::get()->pluck('nama', 'id'),
+            'pengelola' => Pengelola::get()->pluck('nama', 'id'),
+            'penggunaan' => PenggunaanRDTR::get()->pluck('nama', 'id'),
+        ];
 
-        return view('dashboard.persil.bidang.form', compact('model'));
+        return view('dashboard.persil.bidang.form', compact('model', 'data'));
     }
 
     /**
