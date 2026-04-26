@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Bidang;
+use App\Models\Monitoring;
 use App\Models\JenisHak;
 use App\Models\JenisHakAdat;
 use App\Models\Kategori;
@@ -14,13 +14,13 @@ use App\Traits\ControllerTrait;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class BidangController extends Controller
+class MonitoringController extends Controller
 {
     use ControllerTrait;
 
     public function __construct()
     {
-        // $this->authorizeResource(Bidang::class, 'user');
+        // $this->authorizeResource(Monitoring::class, 'user');
     }
 
     /**
@@ -28,7 +28,7 @@ class BidangController extends Controller
      */
     public function index(Request $request) : View
     {
-        $models = Bidang::filter($request->get('filters'))
+        $models = Monitoring::filter($request->get('filters'))
                           ->search($request->get('search'))
                           ->where('id_persil', $request->route('persil'))
                           ->orderBy('id')
@@ -36,7 +36,7 @@ class BidangController extends Controller
                           ->appends('query', null)
                           ->withQueryString();
 
-        return view('dashboard.persil.bidang.index', compact('models'));
+        return view('dashboard.persil.monitoring.index', compact('models'));
     }
 
     /**
@@ -53,7 +53,7 @@ class BidangController extends Controller
      */
     public function form(string $id = null)
     {
-        $model = empty($id) ? new Bidang : $this->findModel(['id' => $id]);
+        $model = empty($id) ? new Monitoring : $this->findModel(['id' => $id]);
         $data['options'] = [
             'jenis_hak' => JenisHak::get()->pluck('nama', 'id'),
             'jenis_hak_adat' => JenisHakAdat::get()->pluck('nama', 'id'),
@@ -63,7 +63,7 @@ class BidangController extends Controller
             'penggunaan' => PenggunaanRDTR::get()->pluck('nama', 'id'),
         ];
 
-        return view('dashboard.persil.bidang.form', compact('model', 'data'));
+        return view('dashboard.persil.monitoring.form', compact('model', 'data'));
     }
 
     /**
@@ -71,7 +71,7 @@ class BidangController extends Controller
      */
     public function save(Request $request, string $id = null)
     {
-        $model = empty($id) ? new Bidang : $this->findModel(['id' => $id]);
+        $model = empty($id) ? new Monitoring : $this->findModel(['id' => $id]);
 
         $params = $request->all();
 
@@ -95,7 +95,7 @@ class BidangController extends Controller
      */
     public function findModel(array $params)
     {
-        $model = Bidang::where($params)->firstOrFail();
+        $model = Monitoring::where($params)->firstOrFail();
         return $model;
     }
 }

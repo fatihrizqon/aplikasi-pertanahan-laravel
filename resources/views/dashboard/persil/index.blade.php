@@ -2,7 +2,7 @@
 $indexHref = route('persil.index');
 $createHref = route('persil.create');
 $bidangHref = fn ($model) => route('persil.bidang.index', $model->id);
-$monitoringHref = fn ($model) => route('persil.monitoring', $model->id);
+$monitoringHref = fn ($model) => route('persil.monitoring.index', $model->id);
 $updateHref = fn ($model) => route('persil.edit', $model->id);
 $deleteHref = fn ($model) => route('persil.destroy', $model->id);
 
@@ -77,7 +77,7 @@ $page_subtitle = "Kelola data persil.";
                                                 <i data-lucide="map-plus" class="w-4 h-4"></i>
                                             </a>
 
-                                            <a href="{{ $monitoringHref($model) }}" onclick="modalFormAjax(this,event)" class="p-2 inline-flex items-center text-xs text-slate-800 dark:text-slate-500 dark:hover:text-slate-400">
+                                            <a href="{{ $monitoringHref($model) }}" class="p-2 inline-flex items-center text-xs text-slate-800 dark:text-slate-500 dark:hover:text-slate-400">
                                                 <i data-lucide="monitor" class="w-4 h-4"></i>
                                             </a>
 

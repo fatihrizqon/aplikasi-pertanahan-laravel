@@ -1,11 +1,12 @@
 @php
-$indexHref = route('persil.bidang.index', request()->route('persil'));
-#$createHref = route('persil.bidang.create');
-$updateHref = fn ($model) => route('persil.bidang.edit', $model->id);
-#$deleteHref = fn ($model) => route('persil.bidang.destroy', $model->id);
+$persil = request()->route('persil');
+$indexHref = route('persil.monitoring.index', $persil);
+$createHref = route('persil.monitoring.create', $persil);
+$updateHref = fn ($model) => route('persil.monitoring.edit', [$persil, $model->id]);
+#$deleteHref = fn ($model) => route('persil.monitoring.destroy', [$persil, $model->id]);
 
 $page_title = "Monitoring Persil";
-$page_subtitle = "Kelola data bidang.";
+$page_subtitle = "Kelola data monitoring.";
 @endphp
 
 <x-dashboard-layout>
@@ -49,20 +50,17 @@ $page_subtitle = "Kelola data bidang.";
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="20">#</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Aksi</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Kategori</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Jenis Hak</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Hak Adat</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Pengelola</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Penggunaan</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Luas (m²)</th>
-                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Status Kesesuaian</th>
+
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Jenis Monitoring</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Hasil</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Tanggal</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Persil</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 dark:divide-neutral-700">
                                 @forelse($models as $model)
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $models->firstItem() + $loop->index }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">{{ $models->firstItem() + $loop->index }}
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
@@ -79,42 +77,25 @@ $page_subtitle = "Kelola data bidang.";
                                         @endcan
                                     </td>
 
+                                    {{-- Jenis Monitoring --}}
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium" style="--warna: {{ $model->kategori->warna }}; background-color: color-mix(in srgb, var(--warna) 30%, transparent);">
-                                            <span class="animate-ping size-1.5 inline-block rounded-full" style="background-color: var(--warna)">
-                                            </span>
-                                            {{ $model->kategori->nama }}
-                                        </span>
+                                        {{ $model->jenisMonitoring->nama ?? '-' }}
                                     </td>
 
+                                    {{-- Hasil --}}
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium" style="--warna: {{ $model->jenisHak->warna }}; background-color: color-mix(in srgb, var(--warna) 30%, transparent);">
-                                            <span class="animate-ping size-1.5 inline-block rounded-full" style="background-color: var(--warna)">
-                                            </span>
-                                            {{ $model->jenisHak->nama }}
-                                        </span>
+                                        {!! $model->hasil !!}
                                     </td>
 
+                                    {{-- Tanggal --}}
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->jenisHakAdat->nama }}
+                                        {{ $model->tanggal }}
                                     </td>
 
+                                    {{-- Persil --}}
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->pengelola->nama }}
+                                        {{ $model->persil->nama ?? '-' }}
                                     </td>
-
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->penggunaan->nama }}
-                                    </td>
-
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->luas }}
-                                    </td>
-
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->statusKesesuaian->nama }}
-                                    </td>
-
                                 </tr>
                                 @empty
                                 <tr>

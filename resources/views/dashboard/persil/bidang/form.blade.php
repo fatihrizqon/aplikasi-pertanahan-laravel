@@ -1,5 +1,6 @@
 @php
-$action = empty($model->id) ? route('persil.bidang.store') : route('persil.bidang.update', $model->id);
+$persil = request()->route('persil');
+$action = empty($model->id) ? route('persil.bidang.store', $persil) : route('persil.bidang.update', ['persil' => $persil, 'bidang' => $model->id]);
 
 $page_title = empty($model->id) ? 'Tambah Bidang Baru' : 'Edit Bidang #' . $model->nomor_bidang;
 $page_subtitle = "Lengkapi semua informasi bidang persil di bawah ini.";
@@ -11,7 +12,7 @@ $page_subtitle = "Lengkapi semua informasi bidang persil di bawah ini.";
         {{-- Page Header --}}
         <div class="space-y-1">
             <div class="flex items-center gap-x-3">
-                <i data-lucide="map" class="size-7 text-blue-600 dark:text-blue-400"></i>
+                <i data-lucide="map" class="size-6 text-blue-600 dark:text-blue-400"></i>
                 <h1 class="page-title">{{ $page_title }}</h1>
             </div>
             <p class="page-subtitle">{{ $page_subtitle }}</p>
@@ -165,12 +166,10 @@ $page_subtitle = "Lengkapi semua informasi bidang persil di bawah ini.";
                         <span class="text-red-500">*</span> Wajib diisi
                     </p>
                     <div class="flex items-center gap-x-2">
-                        <button type="button" class="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-700 transition-colors" onclick="window.HSOverlay.close(document.getElementById('modal-form-ajax'))">
-                            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
-                            Batal
-                        </button>
+                        <a href="{{ route('persil.bidang.index', $persil) }}" class="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-700 transition-colors" onclick="window.HSOverlay.close(document.getElementById('modal-form-ajax'))">
+                            <i data-lucide="chevron-left" class="size-4"></i>
+                            Kembali
+                        </a>
                         <button type="submit" class="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none transition-colors">
                             <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />

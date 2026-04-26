@@ -1,7 +1,11 @@
 @php
+$persil = request()->route('persil');
 $indexHref = route('persil.bidang.index', request()->route('persil'));
-#$createHref = route('persil.bidang.create');
-$updateHref = fn ($model) => route('persil.bidang.edit', $model->id);
+$createHref = route('persil.bidang.create', $persil);
+$updateHref = fn ($model) => route('persil.bidang.edit', [
+    'persil' => $persil,
+    'bidang' => $model->id,
+]);
 #$deleteHref = fn ($model) => route('persil.bidang.destroy', $model->id);
 
 $page_title = "Bidang Persil";

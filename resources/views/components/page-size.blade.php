@@ -26,7 +26,7 @@
             $selected = request('per-page');
             @endphp
 
-            <option disabled {{ $selected ? '' : 'selected' }}>Page Size</option>
+            <option disabled {{ $selected ? '' : 'selected' }}>Select Page Size</option>
 
             @foreach ($options as $option)
                 <option value="{{ $option }}" {{ $selected==$option ? 'selected' : '' }}>

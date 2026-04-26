@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Dashboard\BidangController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\MonitoringController;
 use App\Http\Controllers\Dashboard\PersilController;
 use App\Http\Controllers\Dashboard\Referensi\JenisHakController;
 use App\Http\Controllers\Dashboard\Referensi\PengelolaController;
@@ -25,9 +26,8 @@ Route::middleware('auth')->group(function () {
 
         Route::resource('persil', PersilController::class);
         Route::get('persil/{persil}/monitoring', [PersilController::class, 'monitoring'])->name('persil.monitoring');
-        Route::get('bidang/{persil}', [BidangController::class, 'index'])->name('persil.bidang.index');
-        Route::get('bidang/{persil}/form', [BidangController::class, 'form'])->name('persil.bidang.edit');
-        Route::put('bidang/{persil}', [BidangController::class, 'save'])->name('persil.bidang.update');
+        Route::resource('persil.bidang', BidangController::class);
+        Route::resource('persil.monitoring', MonitoringController::class);
 
         Route::resource('jenis_hak', JenisHakController::class);
         Route::resource('pengelola', PengelolaController::class);
