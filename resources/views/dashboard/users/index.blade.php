@@ -148,28 +148,8 @@ $page_subtitle = "Kelola data pengguna dan pengelolaan akses.";
 
                     <!-- Table Control -->
                     <div class="flex justify-between items-center">
-                        <div class="flex space-x-2 items-center">
-                            <span class="text-sm font-normal w-full">
-                                @if ($models->count())
-                                Showing {{ $models->firstItem() }} to {{ $models->lastItem() }} of {{ $models->total() }} item(s).
-                                @else
-                                No record found.
-                                @endif
-                            </span>
-                            <form action="{{ $indexHref }}" method="GET">
-                                <select name="per-page" class="py-2 px-2 pe-8 border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 dark:placeholder-neutral-500 dark:focus:ring-neutral-600" onchange="this.form.submit()">
-                                    @php
-                                    $options = [10, 25, 50, 100];
-                                    $selected = request('per-page');
-                                    @endphp
-                                    <option disabled {{ $selected ? '' : 'selected' }}>Page Size</option>
-                                    @foreach ($options as $option)
-                                    <option value="{{ $option }}" {{ $selected==$option ? 'selected' : '' }}>{{ $option }}</option>
-                                    @endforeach
-                                </select>
-                            </form>
-                        </div>
-                        {{ $models->links() }}
+                        <x-page-size :route="$indexHref" />
+                        {{ $models->appends(request()->query())->links() }}
                     </div>
                 </div>
             </div>

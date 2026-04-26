@@ -101,7 +101,7 @@ window.switchBasemap = function (key) {
     activeBasemap = key;
 
     // Setelah style dimuat ulang, broadcast event agar layer lain bisa re-attach
-    window.petaMap.once("styledata", () => {
+    window.petaMap.once("style.load", () => {
         window.dispatchEvent(new CustomEvent("basemapChanged", { detail: key }));
     });
 
@@ -129,7 +129,7 @@ function initMap() {
         style: BASEMAP_STYLES[activeBasemap],
         center: [110.36463940268219, -7.805303377839844], // [lng, lat]
         zoom: 10,
-        attributionControl: true,
+        attributionControl: false,
         // Aktifkan WebGL rendering — jauh lebih cepat dari Canvas Leaflet
     }));
 

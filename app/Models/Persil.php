@@ -86,6 +86,19 @@ class Persil extends Model
         return $base;
     }
 
+
+    /**
+     * Get the indexable data array for the model.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'nomor_persil' => $this->nomor_persil,
+        ];
+    }
+
     // ── Relasi ────────────────────────────────────────────────────────────────
 
     public function kelurahan(): BelongsTo

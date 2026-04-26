@@ -83,7 +83,7 @@
 
         <!-- Pagination -->
         <div class="flex justify-end mt-4">
-            {{ $models->links() }}
+            {{ $models->appends(request()->query())->links() }}
         </div>
     </div>
 </x-dashboard-layout>

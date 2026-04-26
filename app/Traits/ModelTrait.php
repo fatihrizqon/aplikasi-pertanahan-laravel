@@ -5,9 +5,12 @@ namespace App\Traits;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Scout\Searchable;
 
 trait ModelTrait
 {
+    use Searchable;
+
 	public function getFields()
 	{
 		static $columns;

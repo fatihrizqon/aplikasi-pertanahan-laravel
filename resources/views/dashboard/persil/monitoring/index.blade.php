@@ -1,11 +1,11 @@
 @php
-$indexHref = route('penggunaan_tkd.index');
-$createHref = route('penggunaan_tkd.create');
-$updateHref = fn ($model) => route('penggunaan_tkd.edit', $model->id);
-$deleteHref = fn ($model) => route('penggunaan_tkd.destroy', $model->id);
+$indexHref = route('persil.bidang.index', request()->route('persil'));
+#$createHref = route('persil.bidang.create');
+$updateHref = fn ($model) => route('persil.bidang.edit', $model->id);
+#$deleteHref = fn ($model) => route('persil.bidang.destroy', $model->id);
 
-$page_title = "Penggunaan Tanah Kas Kalurahan/Desa";
-$page_subtitle = "Kelola data penggunaan Tanah Kas Kalurahan/Desa.";
+$page_title = "Monitoring Persil";
+$page_subtitle = "Kelola data bidang.";
 @endphp
 
 <x-dashboard-layout>
@@ -30,16 +30,13 @@ $page_subtitle = "Kelola data penggunaan Tanah Kas Kalurahan/Desa.";
 
                     <!-- Table Actions -->
                     <div class="grid sm:flex items-center gap-2">
-                        <div class="flex gap-2">
-                            @can(['create_user','export_user','import_user'])
-                            <a href="{{ $createHref }}" onclick="modalFormAjax(this,event)" class="btn-sm btn-ghost focus:outline-hidden">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                                Tambah
-                            </a>
-                            @endcan
-                        </div>
-
                         <div class="ms-auto flex gap-2">
+                            <!-- Filter -->
+                            <button type="button" class="btn-sm btn-ghost focus:outline-hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="hs-filter-modal" data-hs-overlay="#hs-filter-modal">
+                                <i data-lucide="filter" class="w-4 h-4"></i>
+                                Filter
+                            </button>
+
                             <!-- Search -->
                             <x-search-input :route="$indexHref" />
                         </div>
@@ -52,11 +49,13 @@ $page_subtitle = "Kelola data penggunaan Tanah Kas Kalurahan/Desa.";
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="20">#</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400" width="100">Aksi</th>
-                                    <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Nama</th>
-                                    <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Nama File</th>
-                                    <th scope="col" class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Warna</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">On Top</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Pengajuan</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Kategori</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Jenis Hak</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Hak Adat</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Pengelola</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Penggunaan</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Luas (m²)</th>
+                                    <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase dark:text-neutral-400">Status Kesesuaian</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 dark:divide-neutral-700">
@@ -69,11 +68,11 @@ $page_subtitle = "Kelola data penggunaan Tanah Kas Kalurahan/Desa.";
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
                                         @can(['update_user','activate_user','delete_user'])
                                         <div class="grid lg:flex gap-1">
-                                            <a href="{{ $updateHref($model) }}" onclick="modalFormAjax(this,event)" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-blue-500 dark:hover:text-blue-400">
+                                            <a href="{{ $updateHref($model) }}" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-blue-500 dark:hover:text-blue-400">
                                                 <i data-lucide="settings-2" class="w-4 h-4"></i>
                                             </a>
 
-                                            <a href="{{ $deleteHref($model) }}" onclick="modalConfirm(this,event)" data-title="Konfirmasi" data-content="Apakah anda yakin menghapus data tersebut?" data-method="DELETE" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-red-500 dark:hover:text-red-400">
+                                            <a href="#!" onclick="modalConfirm(this,event)" data-title="Konfirmasi" data-content="Apakah anda yakin menghapus data tersebut?" data-method="DELETE" class="p-2 inline-flex items-center text-xs text-gray-800 dark:text-red-500 dark:hover:text-red-400">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                                             </a>
                                         </div>
@@ -81,34 +80,39 @@ $page_subtitle = "Kelola data penggunaan Tanah Kas Kalurahan/Desa.";
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->nama }}
+                                        <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium" style="--warna: {{ $model->kategori->warna }}; background-color: color-mix(in srgb, var(--warna) 30%, transparent);">
+                                            <span class="animate-ping size-1.5 inline-block rounded-full" style="background-color: var(--warna)">
+                                            </span>
+                                            {{ $model->kategori->nama }}
+                                        </span>
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->nama_file ?? '-' }}
+                                        <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium" style="--warna: {{ $model->jenisHak->warna }}; background-color: color-mix(in srgb, var(--warna) 30%, transparent);">
+                                            <span class="animate-ping size-1.5 inline-block rounded-full" style="background-color: var(--warna)">
+                                            </span>
+                                            {{ $model->jenisHak->nama }}
+                                        </span>
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
-                                        @if($model->warna)
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-4 h-4 rounded" style="background-color: {{ $model->warna }}"></span>
-                                            <span>{{ $model->warna }}</span>
-                                        </div>
-                                        @else
-                                        -
-                                        @endif
+                                        {{ $model->jenisHakAdat->nama }}
                                     </td>
 
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-800 dark:text-neutral-200">
-                                        @if($model->ontop)
-                                        <span class="text-green-600 font-medium">Yes</span>
-                                        @else
-                                        <span class="text-gray-400">No</span>
-                                        @endif
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->pengelola->nama }}
                                     </td>
 
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-800 dark:text-neutral-200">
-                                        {{ $model->pengajuan_tkd->count() }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->penggunaan->nama }}
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->luas }}
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-neutral-200">
+                                        {{ $model->statusKesesuaian->nama }}
                                     </td>
 
                                 </tr>
